@@ -1,0 +1,5 @@
+Test Case '-[MonoFinanceUITests.TourUITests testTour]' started.
+Test Case '-[MonoFinanceUITests.TourUITests testTour]' passed (227.368 seconds).
+Test Suite 'TourUITests' passed at 2026-10-15 13:53:41.384.
+Test Suite 'MonoFinanceUITests.xctest' passed at 2026-10-15 13:53:41.384.
+Test Suite 'Selected tests' passed at 2026-10-15 13:53:41.385.
