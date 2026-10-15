@@ -168,16 +168,33 @@ struct CategoryDonutCard: View {
     @State private var selectedAngle: Double?
     @State private var selectedID: String?
 
+    /// Доля, меньше которой категория уходит в «Остальное».
+    private static let minimumShare = 0.01
+    /// Минимальная видимая доля сектора на кольце. Swift Charts падает (NaN в расчёте угла), если сектор
+    /// уже отступа между секторами и скругления углов — так было на «Годе» с категорией в доли процента.
+    private static let minimumDisplayShare = 0.03
+
     /// До 6 крупнейших категорий + «Остальное», чтобы кольцо читалось.
     private var slices: [Slice] {
-        let sorted = items.filter { $0.amount.isPositive }
-        let head = sorted.prefix(6).map { item in
+        let sorted = items.filter { $0.amount.isPositive && $0.amount.chartValue.isFinite }
+        let head = sorted.prefix(6).filter { $0.share >= Self.minimumShare }.map { item in
             Slice(id: item.id, categoryID: item.categoryID, amount: item.amount, share: item.share, isOther: false)
         }
-        let tail = sorted.dropFirst(6)
-        guard !tail.isEmpty else { return head }
-        let rest = Money.sum(tail.map(\.amount), currency: total.currency)
-        return head + [Slice(id: "other", categoryID: nil, amount: rest, share: tail.reduce(0) { $0 + $1.share }, isOther: true)]
+        let headIDs = Set(head.map(\.id))
+        let tail = sorted.filter { !headIDs.contains($0.id) }
+        var result = head
+        if !tail.isEmpty {
+            let rest = Money.sum(tail.map(\.amount), currency: total.currency)
+            result.append(Slice(id: "other", categoryID: nil, amount: rest, share: tail.reduce(0) { $0 + $1.share }, isOther: true))
+        }
+        // Размер сектора на кольце: не меньше минимальной доли, подписи и проценты — по настоящим суммам.
+        let sum = result.reduce(0.0) { $0 + $1.amount.chartValue }
+        guard sum > 0, sum.isFinite else { return [] }
+        return result.map { slice in
+            var copy = slice
+            copy.displayValue = max(slice.amount.chartValue, sum * Self.minimumDisplayShare)
+            return copy
+        }
     }
 
     struct Slice: Identifiable, Equatable {
@@ -186,6 +203,8 @@ struct CategoryDonutCard: View {
         let amount: Money
         let share: Double
         let isOther: Bool
+        /// Величина сектора на кольце (с нижней границей видимости).
+        var displayValue: Double = 0
     }
 
     var body: some View {
@@ -201,12 +220,12 @@ struct CategoryDonutCard: View {
                 ZStack {
                     Chart(slices) { slice in
                         SectorMark(
-                            angle: .value("Сумма", slice.amount.chartValue),
+                            angle: .value("Сумма", slice.displayValue),
                             innerRadius: .ratio(0.64),
                             outerRadius: .ratio(slice.id == selectedID ? 1.0 : 0.94),
                             angularInset: 1.5
                         )
-                        .cornerRadius(5)
+                        .cornerRadius(4)
                         .foregroundStyle(color(of: slice))
                         .opacity(selectedID == nil || slice.id == selectedID ? 1 : 0.35)
                     }
@@ -306,7 +325,7 @@ struct CategoryDonutCard: View {
     private func slice(at value: Double, in slices: [Slice]) -> Slice? {
         var cumulative = 0.0
         for slice in slices {
-            cumulative += slice.amount.chartValue
+            cumulative += slice.displayValue
             if value <= cumulative { return slice }
         }
         return slices.last
