@@ -275,3 +275,51 @@ extension AnalyticsEngineTests {
         XCTAssertEqual(AnalyticsEngine.largeExpenseThresholds(for: .usd), [50, 100, 500, 1_000])
     }
 }
+
+extension AnalyticsEngineTests {
+    /// Всё, что считает экран «Статистика» за год, на неудобных данных: валюта без курса, переводы между валютами,
+    /// возврат больше покупки, операции за два года, крупные суммы. Не должно падать.
+    func testYearReportOnMessyData() {
+        let noRate = Account(bank: .other, name: "GBP без курса", currency: Currency("GBP"))
+        var list = sample
+        for month in 1...24 {
+            let when = periods.calendar.date(byAdding: .month, value: -month, to: date(2026, 10, 15))!
+            list.append(FinanceTransaction(kind: .expense, amount: uzs(Int64(100_000 * month)), accountID: kapital.id,
+                                           categoryID: cat(SystemCategoryKey.cafe), merchant: "EVOS", date: when))
+            list.append(FinanceTransaction(kind: .income, amount: Money(minorUnits: 5_000_00, currency: Currency("GBP")),
+                                           accountID: noRate.id, date: when))
+            list.append(FinanceTransaction(kind: .transfer, amount: uzs(1_200_000), accountID: kapital.id, counterAccountID: dollar.id,
+                                           counterAmount: usd(100), date: when))
+            list.append(FinanceTransaction(kind: .refund, amount: uzs(900_000_000), accountID: kapital.id,
+                                           categoryID: cat(SystemCategoryKey.clothes), date: when))
+            list.append(FinanceTransaction(kind: .expense, amount: uzs(9_000_000_000), accountID: kapital.id, date: when))
+        }
+        let analytics = AnalyticsEngine(transactions: list, accounts: [kapital, uzum, dollar, euro, noRate], categories: categories,
+                                        converter: converter, periods: periods)
+        let now = date(2026, 10, 15, 23)
+        for engine in [analytics, analytics.filteringExpenses(atLeast: uzs(500_000))] {
+            for preset in [PeriodPreset.last365Days, .last90Days, .last30Days, .thisMonth] {
+                let range = periods.range(for: preset, now: now)
+                let previous = periods.previousRange(of: range)
+                _ = engine.summary(range)
+                _ = engine.compare(range, with: previous)
+                _ = engine.spendingByCategory(range)
+                _ = engine.incomeByCategory(range)
+                for granularity in Granularity.allCases { _ = engine.series(range, granularity: granularity) }
+                _ = engine.topMerchants(range, limit: 6)
+                _ = engine.flowsByAccount(range)
+                _ = engine.mandatorySplit(range)
+                _ = engine.unusualExpenses(range, limit: 4)
+                _ = engine.averageDailySpending(range, now: now)
+                _ = engine.largestExpenses(range, limit: 30)
+            }
+            _ = engine.recurringCandidates(now: now)
+            _ = engine.savingsForecast(months: 3, now: now)
+            _ = engine.monthToDate(now: now)
+            _ = engine.projectedMonthSpending(now: now)
+            _ = engine.totalBalance()
+        }
+        let year = analytics.summary(periods.range(for: .last365Days, now: now))
+        XCTAssertTrue(year.excludedCurrencies.contains(Currency("GBP")))
+    }
+}
