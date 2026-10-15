@@ -255,7 +255,7 @@ final class ImportTests: XCTestCase {
         XCTAssertThrowsError(try ImportReader.read(data: Data([0x50, 0x4B, 0x03, 0x04, 0x00, 0x00]), fileName: "broken.xlsx")) {
             XCTAssertEqual($0 as? ImportError, .corruptArchive)
         }
-        XCTAssertEqual(StatementAdapterRegistry.verifiedBanks, [], "Без реальных образцов ни один банковский формат не заявлен как проверенный")
+        XCTAssertEqual(StatementAdapterRegistry.verifiedBanks, [.kapitalbank, .uzum], "Проверенными считаются только форматы, разобранные на реальных выписках (PDF Kapitalbank и Uzum Bank)")
     }
 
     // MARK: - Payme: все карты в одном файле

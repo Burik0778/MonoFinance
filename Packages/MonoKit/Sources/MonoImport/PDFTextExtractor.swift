@@ -3,7 +3,10 @@ import Foundation
 #if canImport(PDFKit)
 import PDFKit
 
-/// Слова страниц PDF с положением (PDFKit). Текст собирается по символам: `PDFPage.string` + `characterBounds(at:)`.
+/// Слова страниц PDF с положением (PDFKit).
+///
+/// Буква и её прямоугольник берутся из одного выделения `selection(for: NSRange)`: индексы `PDFPage.string`
+/// и `characterBounds(at:)` в PDF из Chromium расходятся (буквы оказываются в чужих строках).
 enum PDFTextExtractor {
     static func pages(from data: Data) throws -> [PDFPageText] {
         guard let document = PDFDocument(data: data) else { throw ImportError.corruptPDF }
@@ -14,32 +17,28 @@ enum PDFTextExtractor {
     }
 
     static func words(on page: PDFPage) -> [PDFWord] {
-        guard let string = page.string, !string.isEmpty else { return [] }
         let box = page.bounds(for: .mediaBox)
         var words: [PDFWord] = []
-        var units: [UInt16] = []
+        var text = ""
         var rect = CGRect.null
 
         func flush() {
-            defer { units = []; rect = .null }
-            let text = String(decoding: units, as: UTF16.self).trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !text.isEmpty, !rect.isNull else { return }
+            defer { text = ""; rect = .null }
+            let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !value.isEmpty, !rect.isNull else { return }
             // В PDF ось y направлена вверх — переворачиваем, чтобы строки шли сверху вниз.
-            words.append(PDFWord(text: text, minX: rect.minX - box.minX, maxX: rect.maxX - box.minX,
+            words.append(PDFWord(text: value, minX: rect.minX - box.minX, maxX: rect.maxX - box.minX,
                                  minY: box.maxY - rect.maxY, maxY: box.maxY - rect.minY))
         }
 
-        for (index, unit) in string.utf16.enumerated() {
-            if let scalar = Unicode.Scalar(unit), CharacterSet.whitespacesAndNewlines.contains(scalar) {
+        for index in 0..<page.numberOfCharacters {
+            guard let selection = page.selection(for: NSRange(location: index, length: 1)),
+                  let character = selection.string, !character.isEmpty else { continue }
+            if character.unicodeScalars.allSatisfy({ CharacterSet.whitespacesAndNewlines.contains($0) }) {
                 flush()
                 continue
             }
-            // Вторая половина суррогатной пары — та же буква.
-            if UTF16.isTrailSurrogate(unit) {
-                units.append(unit)
-                continue
-            }
-            let bounds = page.characterBounds(at: index)
+            let bounds = selection.bounds(for: page)
             guard bounds.height > 0, bounds.width >= 0, bounds.minX.isFinite, bounds.minY.isFinite else { continue }
             if !rect.isNull {
                 let height = max(rect.height, bounds.height)
@@ -47,7 +46,7 @@ enum PDFTextExtractor {
                 let gap = bounds.minX - rect.maxX
                 if !(sameLine && gap < 0.15 * height && gap > -0.5 * height) { flush() }
             }
-            units.append(unit)
+            text += character
             rect = rect.isNull ? bounds : rect.union(bounds)
         }
         flush()
