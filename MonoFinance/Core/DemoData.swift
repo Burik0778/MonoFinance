@@ -111,6 +111,10 @@ enum DemoData {
         add(.refund, uzs(690_000), uzum, SystemCategoryKey.clothes, merchant: "Uzum Market", at: day(12, hour: 10))
         add(.income, uzs(87_000), kapital, SystemCategoryKey.cashback, merchant: "Kapitalbank", at: day(10, hour: 9))
         add(.income, uzs(1_200_000), cash, SystemCategoryKey.sale, merchant: "Продажа велосипеда", at: day(45, hour: 12))
+        // Крошечные суммы в давних месяцах: на «Годе» дают столбики и секторы в доли процента (проверка отрисовки).
+        add(.fee, uzs(500), kapital, nil, at: day(230, hour: 12))
+        add(.expense, uzs(1_000), kapital, SystemCategoryKey.gifts, merchant: "Открытка", at: day(260, hour: 12))
+        add(.income, uzs(2_000), kapital, SystemCategoryKey.cashback, merchant: "Kapitalbank", at: day(290, hour: 12))
         add(.expense, uzs(85_000), kapital, SystemCategoryKey.cafe, merchant: "EVOS", at: day(0, hour: max(0, calendar.component(.hour, from: now) - 1)), source: .voice)
 
         try db.insert(batch: batch.filter { $0.date <= now })
