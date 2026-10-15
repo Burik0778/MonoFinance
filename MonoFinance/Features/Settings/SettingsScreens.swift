@@ -65,7 +65,8 @@ struct SecuritySettingsView: View {
                     privacyLine("internaldrive.fill", "Данные хранятся только на этом iPhone, в защищённом хранилище iOS (Data Protection).")
                     privacyLine("icloud.slash.fill", "Нет аккаунта и облака MONO: операции никуда не отправляются.")
                     privacyLine("waveform.badge.mic", "Голос распознаётся на устройстве. Серверы Apple используются только с вашего разрешения, если язык не поддерживается локально.")
-                    privacyLine("network", "Из сети загружаются только курсы ЦБ РУз — запрос без ваших данных.")
+                    privacyLine("network", "Из сети загружаются курсы ЦБ РУз — запрос без ваших данных.")
+                    privacyLine("sparkles", "Нейросеть — только если вы её включите и дадите согласие: ей уходит сводка без операций, номеров карт и имён.")
                     privacyLine("key.fill", "Пароли от банков приложение не запрашивает и не хранит.")
                 }
                 .padding(.vertical, 6)
@@ -260,90 +261,6 @@ struct SpeechSettingsView: View {
             }
         }
         .monoFont(.caption)
-    }
-}
-
-// MARK: - Ассистент и ИИ
-
-struct AISettingsView: View {
-    @Environment(SettingsStore.self) private var settings
-    @State private var token = ""
-    @State private var tokenSaved = false
-
-    var body: some View {
-        @Bindable var settings = settings
-        List {
-            Section {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Ассистент работает на устройстве")
-                        .monoFont(.headline)
-                        .foregroundStyle(Color.mono.textPrimary)
-                    Text("Ответы на вопросы о расходах, сравнения, прогнозы и поиск необычных трат считаются локально по вашим операциям. Если данных нет — ассистент так и говорит.")
-                        .monoFont(.footnote)
-                        .foregroundStyle(Color.mono.textSecondary)
-                }
-                .padding(.vertical, 6)
-            }
-            .listRowBackground(Color.mono.surface1)
-
-            Section {
-                Toggle(isOn: $settings.llmEnabled) {
-                    FormRow(icon: "server.rack", tint: Color.mono.accent, title: "Пояснения внешней модели",
-                            subtitle: Text("Через ваш собственный сервер (HTTPS)"))
-                }
-                .tint(Color.mono.positive)
-                if settings.llmEnabled {
-                    TextField("https://…", text: $settings.llmEndpoint)
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .monoFont(.body)
-                    if !settings.llmEndpoint.isEmpty && URL(string: settings.llmEndpoint)?.scheme != "https" {
-                        Text("Адрес должен начинаться с https://")
-                            .monoFont(.caption)
-                            .foregroundStyle(Color.mono.negative)
-                    }
-                    HStack {
-                        SecureField("Токен доступа (необязательно)", text: $token)
-                            .monoFont(.body)
-                            .textInputAutocapitalization(.never)
-                        Button(tokenSaved ? "Сохранено" : "Сохранить") {
-                            KeychainStore.set(token, for: KeychainStore.Keys.llmToken)
-                            token = ""
-                            tokenSaved = true
-                            Haptics.success()
-                        }
-                        .disabled(token.isEmpty)
-                    }
-                    Toggle(isOn: $settings.llmConsent) {
-                        Text("Я согласен отправлять на этот сервер текст вопроса и посчитанные приложением итоги (без списка операций, выписок и аудио).")
-                            .monoFont(.footnote)
-                            .foregroundStyle(Color.mono.textSecondary)
-                    }
-                    .tint(Color.mono.positive)
-                }
-            } header: {
-                Kicker("Внешняя модель")
-            } footer: {
-                Text("Модель не считает цифры — она только пересказывает ответ, который уже посчитало приложение. Токен хранится в Keychain только на этом устройстве.")
-                    .monoFont(.caption)
-            }
-            .listRowBackground(Color.mono.surface1)
-
-            if KeychainStore.get(KeychainStore.Keys.llmToken) != nil || tokenSaved {
-                Section {
-                    Button("Удалить сохранённый токен", role: .destructive) {
-                        KeychainStore.set(nil, for: KeychainStore.Keys.llmToken)
-                        tokenSaved = false
-                    }
-                }
-                .listRowBackground(Color.mono.surface1)
-            }
-        }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
-        .background(MonoBackdrop())
-        .navigationTitle(Text("Ассистент и ИИ"))
     }
 }
 

@@ -83,7 +83,7 @@ struct RouteDestination: View {
         case .speechSettings:
             SpeechSettingsView()
         case .aiSettings:
-            AISettingsView()
+            NeuralNetworkSettingsView()
         case .securitySettings:
             SecuritySettingsView()
         case .about:

@@ -65,8 +65,8 @@ struct SettingsView: View {
                             subtitle: Text(verbatim: settings.speechLanguage.nativeName))
                 }
                 NavigationLink(value: Route.aiSettings) {
-                    FormRow(icon: "sparkles", tint: Color.mono.accent, title: "Ассистент и ИИ",
-                            subtitle: settings.llmEnabled && settings.llmConsent ? Text("Внешняя модель подключена") : Text("Только на устройстве"))
+                    FormRow(icon: "sparkles", tint: Color.mono.accent, title: "Нейросеть",
+                            subtitle: settings.llmReady ? Text("Подключена: \(settings.llmCandidates.first?.name ?? "")") : Text("Только на устройстве"))
                 }
             } header: {
                 Kicker("Голос и ассистент")

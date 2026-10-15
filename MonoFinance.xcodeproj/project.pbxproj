@@ -21,6 +21,7 @@
 		2B8F4BB3E849E539C85401E2 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC180F8A00B09F238A416810 /* AppEnvironment.swift */; };
 		36107A55F16F85559B9F898A /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98E9648D65734FD84E3EA2F2 /* Theme.swift */; };
 		430B4B7BD7A292CBCB06C843 /* SettingsScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = A693D3F39D983EBB4910D318 /* SettingsScreens.swift */; };
+		9E3492A201B87ACCEF8B2401 /* NeuralNetworkSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E38549319C6C5EF46071E147 /* NeuralNetworkSettingsView.swift */; };
 		5255393288F8BF8E9DE2B39F /* Formatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FDB1DFA99786C630DD47ABC /* Formatting.swift */; };
 		5369434F018EDE4AF800FE5E /* VoiceOrb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 729F8D4F84CB29E9BD7F5981 /* VoiceOrb.swift */; };
 		53A82C896946833A84B1F7DB /* ExchangeRatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C293437DE8FD0BB87D20E16E /* ExchangeRatesView.swift */; };
@@ -127,6 +128,7 @@
 		9B7A25F7ECC0054B1E63BB82 /* Atmosphere.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Atmosphere.swift; sourceTree = "<group>"; };
 		A64CD4D18A9C9C45CC14DE12 /* PlanEditors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanEditors.swift; sourceTree = "<group>"; };
 		A693D3F39D983EBB4910D318 /* SettingsScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreens.swift; sourceTree = "<group>"; };
+		E38549319C6C5EF46071E147 /* NeuralNetworkSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeuralNetworkSettingsView.swift; sourceTree = "<group>"; };
 		A70C27BE090642DCB829850D /* VirtualCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualCardView.swift; sourceTree = "<group>"; };
 		A7DB125CB05DBB98D9B903B3 /* VoiceInputModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceInputModel.swift; sourceTree = "<group>"; };
 		A9C6D50604B21D88D2ADFF39 /* NumberPad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NumberPad.swift; sourceTree = "<group>"; };
@@ -253,6 +255,7 @@
 			children = (
 				193A2F268EB81D10E3933CAB /* BackupView.swift */,
 				C293437DE8FD0BB87D20E16E /* ExchangeRatesView.swift */,
+				E38549319C6C5EF46071E147 /* NeuralNetworkSettingsView.swift */,
 				A693D3F39D983EBB4910D318 /* SettingsScreens.swift */,
 				1ED14F27D78711CE509FD1E0 /* SettingsView.swift */,
 			);
@@ -575,6 +578,7 @@
 				D2516E5E349D98C3BAADA21E /* Router.swift in Sources */,
 				7E6EAD9095339F7C73199B93 /* Services.swift in Sources */,
 				430B4B7BD7A292CBCB06C843 /* SettingsScreens.swift in Sources */,
+				9E3492A201B87ACCEF8B2401 /* NeuralNetworkSettingsView.swift in Sources */,
 				6FC569E2AEECFA8709325BA2 /* SettingsStore.swift in Sources */,
 				1B8172197AD5516FEB44C047 /* SettingsView.swift in Sources */,
 				DEE7508DD24D41E5C13E5FD8 /* SpeechEngine.swift in Sources */,

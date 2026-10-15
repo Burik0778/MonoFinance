@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import MonoCore
+import MonoIntelligence
 
 /// Ключи пользовательских настроек интерфейса и безопасности (UserDefaults).
 /// Финансовые настройки (базовая валюта, счёт по умолчанию) хранятся в базе и попадают в резервную копию.
@@ -20,7 +21,8 @@ enum SettingsKeys {
     static let lastRatesUpdate = "lastRatesUpdate"
     static let remindersEnabled = "remindersEnabled"
     static let llmEnabled = "llmEnabled"
-    static let llmEndpoint = "llmEndpoint"
+    static let llmProviders = "llmProviders"
+    static let llmActiveProvider = "llmActiveProvider"
     static let llmConsent = "llmConsent"
     static let demoMode = "demoMode"
 }
@@ -64,9 +66,14 @@ final class SettingsStore {
     var cbuRatesEnabled: Bool { didSet { defaults.set(cbuRatesEnabled, forKey: SettingsKeys.cbuRatesEnabled) } }
     var lastRatesUpdate: Date? { didSet { defaults.set(lastRatesUpdate, forKey: SettingsKeys.lastRatesUpdate) } }
     var remindersEnabled: Bool { didSet { defaults.set(remindersEnabled, forKey: SettingsKeys.remindersEnabled) } }
-    /// Внешняя языковая модель через собственный бэкенд — выключено по умолчанию.
+    /// Нейросеть (Groq, Cerebras, OpenRouter, Gemini или свой сервис) — выключено по умолчанию.
     var llmEnabled: Bool { didSet { defaults.set(llmEnabled, forKey: SettingsKeys.llmEnabled) } }
-    var llmEndpoint: String { didSet { defaults.set(llmEndpoint, forKey: SettingsKeys.llmEndpoint) } }
+    /// Сервисы нейросети. Ключи хранятся отдельно, в Keychain (`LLMKeychain`).
+    var llmProviders: [LLMProvider] {
+        didSet { defaults.set(try? JSONEncoder().encode(llmProviders), forKey: SettingsKeys.llmProviders) }
+    }
+    var llmActiveProviderID: String { didSet { defaults.set(llmActiveProviderID, forKey: SettingsKeys.llmActiveProvider) } }
+    /// Согласие на отправку сводки (без операций, карт и имён) выбранному сервису.
     var llmConsent: Bool { didSet { defaults.set(llmConsent, forKey: SettingsKeys.llmConsent) } }
     var demoMode: Bool { didSet { defaults.set(demoMode, forKey: SettingsKeys.demoMode) } }
 
@@ -87,8 +94,23 @@ final class SettingsStore {
         lastRatesUpdate = defaults.object(forKey: SettingsKeys.lastRatesUpdate) as? Date
         remindersEnabled = defaults.bool(forKey: SettingsKeys.remindersEnabled)
         llmEnabled = defaults.bool(forKey: SettingsKeys.llmEnabled)
-        llmEndpoint = defaults.string(forKey: SettingsKeys.llmEndpoint) ?? ""
+        let savedProviders = defaults.data(forKey: SettingsKeys.llmProviders).flatMap { try? JSONDecoder().decode([LLMProvider].self, from: $0) }
+        llmProviders = LLMProvider.mergingPresets(into: savedProviders ?? [])
+        llmActiveProviderID = defaults.string(forKey: SettingsKeys.llmActiveProvider) ?? LLMProvider.groq.id
         llmConsent = defaults.bool(forKey: SettingsKeys.llmConsent)
         demoMode = defaults.bool(forKey: SettingsKeys.demoMode)
     }
+
+    /// Активный сервис нейросети (или первый, если активный удалён).
+    var llmActiveProvider: LLMProvider? {
+        llmProviders.first { $0.id == llmActiveProviderID } ?? llmProviders.first
+    }
+
+    /// Сервисы в порядке попыток: активный, затем остальные включённые с ключом.
+    var llmCandidates: [LLMProvider] {
+        LLMProvider.fallbackOrder(llmProviders, activeID: llmActiveProviderID) { LLMKeychain.hasKey($0) }
+    }
+
+    /// Можно ли спрашивать нейросеть: включено, есть согласие и хотя бы один сервис с ключом.
+    var llmReady: Bool { llmEnabled && llmConsent && !llmCandidates.isEmpty }
 }

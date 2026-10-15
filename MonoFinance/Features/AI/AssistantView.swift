@@ -2,8 +2,11 @@ import SwiftUI
 import MonoCore
 import MonoIntelligence
 
-/// Финансовый ассистент. Все числа считает локальный `AssistantEngine` по реальным операциям.
-/// Внешняя модель (если пользователь сам подключил свой сервер и дал согласие) только поясняет уже посчитанный ответ.
+/// Финансовый ассистент — чат.
+///
+/// Если включена нейросеть, есть согласие и ключ, вопрос уходит выбранному сервису вместе со сводкой, посчитанной
+/// на телефоне (`FinancialSummaryBuilder` + `PrivacySanitizer`). Без сети, без согласия или при ошибке — прежние
+/// локальные ответы `AssistantEngine` по реальным операциям.
 struct AssistantView: View {
     @Environment(FinanceStore.self) private var store
     @Environment(SettingsStore.self) private var settings
@@ -15,17 +18,30 @@ struct AssistantView: View {
     @State private var question = ""
     @FocusState private var inputFocused: Bool
 
+    @State private var showPayload = false
+    @State private var pendingTask: Task<Void, Never>?
+
+    /// Реплика чата: вопрос и ответ нейросети или локальный ответ.
     struct Exchange: Identifiable, Equatable {
         let id = UUID()
         let question: String
-        let answer: AssistantAnswer
-        var explanation: String?
-        var explaining = false
-        var explanationError: String?
+        /// Локальный ответ: без нейросети или если она не ответила.
+        var answer: AssistantAnswer?
+        /// Ответ нейросети.
+        var reply: String?
+        /// Кто ответил.
+        var providerName: String?
+        /// «Groq не ответил — ответил Gemini».
+        var notice: String?
+        /// Почему нейросеть не ответила.
+        var error: String?
+        var pending = false
     }
 
-    private var remoteAvailable: Bool {
-        settings.llmEnabled && settings.llmConsent && URL(string: settings.llmEndpoint)?.scheme == "https"
+    private var remoteAvailable: Bool { settings.llmReady }
+
+    private var suggestionPhrases: [String] {
+        remoteAvailable ? LLMPrompt.suggestions : AssistantEngine.suggestions.map { $0(language) }
     }
 
     var body: some View {
@@ -35,8 +51,8 @@ struct AssistantView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 22) {
                             intro
-                            ForEach($exchanges) { $exchange in
-                                ExchangeView(exchange: $exchange, remoteAvailable: remoteAvailable, onOpen: open)
+                            ForEach(exchanges) { exchange in
+                                ExchangeView(exchange: exchange, onOpen: open)
                                     .id(exchange.id)
                                     .transition(.move(edge: .bottom).combined(with: .opacity))
                             }
@@ -47,7 +63,7 @@ struct AssistantView: View {
                     }
                     .scrollIndicators(.hidden)
                     .scrollDismissesKeyboard(.interactively)
-                    .onChange(of: exchanges.count) { _, _ in
+                    .onChange(of: exchanges) { _, _ in
                         guard let last = exchanges.last else { return }
                         withMonoAnimation(.standard) { proxy.scrollTo(last.id, anchor: .top) }
                     }
@@ -64,6 +80,7 @@ struct AssistantView: View {
                 if !exchanges.isEmpty {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
+                            pendingTask?.cancel()
                             withMonoAnimation(.standard) { exchanges.removeAll() }
                         } label: {
                             Image(systemName: "arrow.counterclockwise")
@@ -74,6 +91,15 @@ struct AssistantView: View {
             }
         }
         .presentationDetents([.large])
+        .sheet(isPresented: $showPayload) {
+            NavigationStack {
+                LLMPayloadPreviewView()
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) { DismissButton() }
+                    }
+            }
+        }
+        .onDisappear { pendingTask?.cancel() }
     }
 
     private var intro: some View {
@@ -82,9 +108,29 @@ struct AssistantView: View {
             Text("Спросите о своих деньгах")
                 .monoFont(.display)
                 .foregroundStyle(Color.mono.textPrimary)
-            Text("Ответы считаются на устройстве по вашим операциям. Если данных нет — я так и скажу.")
-                .monoFont(.callout)
-                .foregroundStyle(Color.mono.textSecondary)
+            if remoteAvailable, let provider = settings.llmCandidates.first {
+                Text("Отвечает нейросеть \(provider.name) по сводке, посчитанной на телефоне. Операции, карты и имена не отправляются.")
+                    .monoFont(.callout)
+                    .foregroundStyle(Color.mono.textSecondary)
+                Button {
+                    showPayload = true
+                } label: {
+                    Label("Что будет отправлено", systemImage: "doc.text.magnifyingglass")
+                }
+                .buttonStyle(ChipStyle())
+            } else {
+                Text("Ответы считаются на устройстве по вашим операциям. Если данных нет — я так и скажу.")
+                    .monoFont(.callout)
+                    .foregroundStyle(Color.mono.textSecondary)
+                if settings.llmEnabled && !settings.llmConsent {
+                    Button {
+                        showPayload = true
+                    } label: {
+                        Label("Нейросеть ждёт вашего согласия", systemImage: "sparkles")
+                    }
+                    .buttonStyle(ChipStyle())
+                }
+            }
         }
     }
 
@@ -92,15 +138,15 @@ struct AssistantView: View {
         VStack(alignment: .leading, spacing: 4) {
             Kicker("Например")
                 .padding(.bottom, 6)
-            ForEach(Array(AssistantEngine.suggestions.enumerated()), id: \.offset) { index, phrase in
+            ForEach(Array(suggestionPhrases.enumerated()), id: \.offset) { index, phrase in
                 Button {
-                    ask(phrase(language))
+                    ask(phrase)
                 } label: {
                     HStack(alignment: .firstTextBaseline, spacing: 14) {
                         Text(verbatim: String(format: "%02d", index + 1))
                             .font(.system(size: 13, weight: .semibold, design: .monospaced))
                             .foregroundStyle(Color.mono.accentText)
-                        Text(verbatim: phrase(language))
+                        Text(verbatim: phrase)
                             .monoFont(.quote)
                             .foregroundStyle(Color.mono.textPrimary)
                             .multilineTextAlignment(.leading)
@@ -149,14 +195,49 @@ struct AssistantView: View {
 
     private func ask(_ text: String) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        let engine = AssistantEngine(analytics: store.analytics(), budgets: store.budgets, planned: store.planned, language: language, now: Date())
-        let answer = engine.ask(trimmed)
+        guard !trimmed.isEmpty, !(exchanges.last?.pending ?? false) else { return }
         Haptics.soft()
-        withMonoAnimation(.standard) {
-            exchanges.append(Exchange(question: trimmed, answer: answer))
-        }
         question = ""
+        guard remoteAvailable else {
+            withMonoAnimation(.standard) {
+                exchanges.append(Exchange(question: trimmed, answer: localAnswer(trimmed)))
+            }
+            return
+        }
+        let exchange = Exchange(question: trimmed, pending: true)
+        let history = exchanges.flatMap { item -> [LLMMessage] in
+            guard let reply = item.reply else { return [] }
+            return [LLMMessage(role: .user, content: item.question), LLMMessage(role: .assistant, content: reply)]
+        }
+        withMonoAnimation(.standard) { exchanges.append(exchange) }
+        let summary = FinancialSummaryBuilder(analytics: store.analytics(), budgets: store.budgets, now: Date()).text()
+        let messages = LLMPrompt.messages(summary: summary, history: history, question: trimmed)
+        let candidates = settings.llmCandidates
+        pendingTask = Task { @MainActor in
+            let result = await LLMClient().ask(messages: messages, candidates: candidates)
+            guard !Task.isCancelled, let index = exchanges.firstIndex(where: { $0.id == exchange.id }) else { return }
+            var updated = exchanges[index]
+            updated.pending = false
+            switch result {
+            case .success(let outcome):
+                updated.reply = outcome.value
+                updated.providerName = outcome.provider.name
+                if !outcome.skipped.isEmpty {
+                    let names = outcome.skipped.map(\.name).joined(separator: ", ")
+                    updated.notice = String(localized: "\(names) не ответил — ответил \(outcome.provider.name)")
+                }
+                Haptics.success()
+            case .failure(let error):
+                updated.error = error.message
+                updated.answer = localAnswer(trimmed)
+            }
+            withMonoAnimation(.standard) { exchanges[index] = updated }
+        }
+    }
+
+    private func localAnswer(_ question: String) -> AssistantAnswer {
+        AssistantEngine(analytics: store.analytics(), budgets: store.budgets, planned: store.planned, language: language, now: Date())
+            .ask(question)
     }
 
     private func open(_ row: AssistantAnswer.Row) {
@@ -176,14 +257,11 @@ struct AssistantView: View {
     }
 }
 
-/// Вопрос и ответ: заголовок-цифра, пояснение, строки с долями, оговорки.
+/// Вопрос и ответ: ответ нейросети или локальный ответ (заголовок-цифра, пояснение, строки с долями, оговорки).
 private struct ExchangeView: View {
-    @Binding var exchange: AssistantView.Exchange
-    let remoteAvailable: Bool
+    let exchange: AssistantView.Exchange
     let onOpen: (AssistantAnswer.Row) -> Void
 
-    @Environment(SettingsStore.self) private var settings
-    @Environment(\.appLanguage) private var language
     @Environment(\.hideAmounts) private var hideAmounts
 
     var body: some View {
@@ -198,80 +276,103 @@ private struct ExchangeView: View {
                     .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.lg, style: .continuous).fill(Color.mono.surface3))
             }
 
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .top, spacing: 12) {
-                    Capsule(style: .continuous)
-                        .fill(Color.mono.accent)
-                        .frame(width: 3)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(verbatim: hideAmounts && exchange.answer.hasData ? "•••" : exchange.answer.headline)
-                            .monoFont(.title)
-                            .foregroundStyle(exchange.answer.hasData ? Color.mono.textPrimary : Color.mono.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        if !exchange.answer.text.isEmpty && !hideAmounts {
-                            Text(verbatim: exchange.answer.text)
-                                .monoFont(.quote)
-                                .foregroundStyle(Color.mono.textSecondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                }
-
-                if !exchange.answer.rows.isEmpty && !hideAmounts {
-                    VStack(spacing: 0) {
-                        ForEach(exchange.answer.rows) { row in
-                            Button {
-                                onOpen(row)
-                            } label: {
-                                rowView(row)
-                            }
-                            .buttonStyle(PressableStyle(scale: 0.98))
-                            .disabled(row.categoryID == nil && row.transactionID == nil)
-                        }
-                    }
-                    .monoSurface(radius: MonoTokens.Radius.lg, padding: 12)
-                }
-
-                if let note = exchange.answer.note {
-                    Label { Text(verbatim: note) } icon: { Image(systemName: "info.circle") }
+            if exchange.pending {
+                HStack(spacing: 10) {
+                    ProgressView().controlSize(.small)
+                    Text("Нейросеть думает…")
                         .monoFont(.footnote)
+                        .foregroundStyle(Color.mono.textSecondary)
+                }
+                .padding(.leading, 4)
+            }
+
+            if let reply = exchange.reply {
+                replyView(reply)
+            }
+
+            if let error = exchange.error {
+                Label { Text(verbatim: error) } icon: { Image(systemName: "exclamationmark.triangle") }
+                    .monoFont(.footnote)
+                    .foregroundStyle(Color.mono.warning)
+            }
+
+            if let answer = exchange.answer {
+                localAnswerView(answer)
+            }
+        }
+    }
+
+    private func replyView(_ reply: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Capsule(style: .continuous)
+                .fill(Color.mono.accent)
+                .frame(width: 3)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(Self.formatted(reply))
+                    .monoFont(.callout)
+                    .foregroundStyle(Color.mono.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+                    .blur(radius: hideAmounts ? 6 : 0)
+                if let name = exchange.providerName {
+                    Text("Ответила нейросеть · \(name)")
+                        .monoFont(.caption)
+                        .foregroundStyle(Color.mono.textTertiary)
+                }
+                if let notice = exchange.notice {
+                    Text(verbatim: notice)
+                        .monoFont(.caption)
                         .foregroundStyle(Color.mono.warning)
                 }
+            }
+        }
+    }
 
-                if let explanation = exchange.explanation {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Kicker("Пояснение модели", color: Color.mono.accentText)
-                        Text(verbatim: explanation)
-                            .monoFont(.callout)
-                            .foregroundStyle(Color.mono.textPrimary)
+    /// Ответ нейросети: жирный и курсив из Markdown, переносы строк сохраняются.
+    static func formatted(_ reply: String) -> AttributedString {
+        let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        return (try? AttributedString(markdown: reply, options: options)) ?? AttributedString(reply)
+    }
+
+    private func localAnswerView(_ answer: AssistantAnswer) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                Capsule(style: .continuous)
+                    .fill(Color.mono.accent)
+                    .frame(width: 3)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(verbatim: hideAmounts && answer.hasData ? "•••" : answer.headline)
+                        .monoFont(.title)
+                        .foregroundStyle(answer.hasData ? Color.mono.textPrimary : Color.mono.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !answer.text.isEmpty && !hideAmounts {
+                        Text(verbatim: answer.text)
+                            .monoFont(.quote)
+                            .foregroundStyle(Color.mono.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
-                        Text("Цифры выше посчитаны приложением; модель их только поясняет.")
-                            .monoFont(.caption)
-                            .foregroundStyle(Color.mono.textTertiary)
-                    }
-                    .padding(12)
-                    .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.accent.opacity(0.08)))
-                } else if remoteAvailable && exchange.answer.hasData && !hideAmounts {
-                    Button {
-                        Task { await explain() }
-                    } label: {
-                        HStack(spacing: 6) {
-                            if exchange.explaining {
-                                ProgressView().controlSize(.small)
-                            } else {
-                                Image(systemName: "text.bubble")
-                            }
-                            Text("Пояснить подробнее")
-                        }
-                    }
-                    .buttonStyle(ChipStyle())
-                    .disabled(exchange.explaining)
-                    if let error = exchange.explanationError {
-                        Text(verbatim: error)
-                            .monoFont(.caption)
-                            .foregroundStyle(Color.mono.negative)
                     }
                 }
+            }
+
+            if !answer.rows.isEmpty && !hideAmounts {
+                VStack(spacing: 0) {
+                    ForEach(answer.rows) { row in
+                        Button {
+                            onOpen(row)
+                        } label: {
+                            rowView(row)
+                        }
+                        .buttonStyle(PressableStyle(scale: 0.98))
+                        .disabled(row.categoryID == nil && row.transactionID == nil)
+                    }
+                }
+                .monoSurface(radius: MonoTokens.Radius.lg, padding: 12)
+            }
+
+            if let note = answer.note {
+                Label { Text(verbatim: note) } icon: { Image(systemName: "info.circle") }
+                    .monoFont(.footnote)
+                    .foregroundStyle(Color.mono.warning)
             }
         }
     }
@@ -307,26 +408,5 @@ private struct ExchangeView: View {
         case .positive: return Color.mono.positive
         case .negative: return Color.mono.negative
         }
-    }
-
-    /// Отправляет на сервер пользователя только вопрос и уже посчитанные цифры ответа — не операции и не выписки.
-    private func explain() async {
-        guard let url = URL(string: settings.llmEndpoint), url.scheme == "https" else { return }
-        exchange.explaining = true
-        exchange.explanationError = nil
-        let client = AssistantRemoteClient(endpoint: url, token: KeychainStore.get(KeychainStore.Keys.llmToken))
-        do {
-            let text = try await client.explain(
-                question: exchange.question,
-                headline: exchange.answer.headline,
-                text: exchange.answer.text,
-                facts: exchange.answer.rows.map { "\($0.title): \($0.value)" + ($0.detail.map { " (\($0))" } ?? "") },
-                language: language
-            )
-            withMonoAnimation(.standard) { exchange.explanation = text.trimmingCharacters(in: .whitespacesAndNewlines) }
-        } catch {
-            exchange.explanationError = String(localized: "Не удалось получить пояснение. Проверьте адрес сервера в настройках ИИ.")
-        }
-        exchange.explaining = false
     }
 }

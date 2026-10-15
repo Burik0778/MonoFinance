@@ -1,7 +1,7 @@
 import Foundation
 import Security
 
-/// Хранение секретов (токен собственного LLM-бэкенда) в Keychain, только на этом устройстве.
+/// Хранение секретов (ключи сервисов нейросети) в Keychain, только на этом устройстве.
 enum KeychainStore {
     private static let service = "uz.mono.finance"
 
@@ -30,9 +30,5 @@ enum KeychainStore {
         var result: AnyObject?
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess, let data = result as? Data else { return nil }
         return String(data: data, encoding: .utf8)
-    }
-
-    enum Keys {
-        static let llmToken = "llmToken"
     }
 }

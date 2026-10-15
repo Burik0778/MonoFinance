@@ -1,6 +1,7 @@
 import Foundation
 import MonoCore
 import MonoStorage
+import MonoIntelligence
 
 /// Официальные курсы ЦБ Республики Узбекистан. Запрос не содержит никаких данных пользователя.
 struct ExchangeRateService {
@@ -103,46 +104,84 @@ enum AppEnvironmentPaths {
     static var receipts: URL { root.appendingPathComponent("Receipts", isDirectory: true) }
 }
 
-/// Внешняя языковая модель через собственный защищённый бэкенд пользователя. Выключено по умолчанию.
+/// Ключи сервисов нейросети: только Keychain на этом устройстве, отдельная запись на каждый сервис.
+enum LLMKeychain {
+    static func key(for provider: LLMProvider) -> String? {
+        guard let value = KeychainStore.get(provider.keychainAccount)?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !value.isEmpty else { return nil }
+        return value
+    }
+
+    static func hasKey(_ provider: LLMProvider) -> Bool { key(for: provider) != nil }
+
+    static func set(_ key: String?, for provider: LLMProvider) {
+        KeychainStore.set(key?.trimmingCharacters(in: .whitespacesAndNewlines), for: provider.keychainAccount)
+    }
+}
+
+/// Запросы к нейросети через OpenAI-совместимый `POST {baseURL}/chat/completions`.
 ///
-/// Модели передаются только вопрос и уже посчитанный ответ (агрегаты), без списка операций и аудио.
-/// Задача модели — переформулировать объяснение; числа считаются локально и не могут быть изменены.
-struct AssistantRemoteClient {
-    struct Payload: Encodable {
-        let question: String
-        let answerHeadline: String
-        let answerText: String
-        let facts: [String]
-        let language: String
-        let instruction: String
+/// Наружу уходят только сообщения, собранные `LLMPrompt` (сводка + вопрос после `PrivacySanitizer`).
+/// Ключи и тела ответов не логируются; таймаут — 30 секунд.
+struct LLMClient {
+    static let timeout: TimeInterval = 30
+
+    var session: URLSession = LLMClient.makeSession()
+
+    static func makeSession() -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = timeout
+        configuration.timeoutIntervalForResource = timeout + 5
+        configuration.waitsForConnectivity = false
+        configuration.urlCache = nil
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        return URLSession(configuration: configuration)
     }
 
-    struct Response: Decodable {
-        let text: String
-    }
-
-    let endpoint: URL
-    let token: String?
-    var session: URLSession = .shared
-
-    func explain(question: String, headline: String, text: String, facts: [String], language: AppLanguage) async throws -> String {
-        var request = URLRequest(url: endpoint, timeoutInterval: 30)
+    /// Один запрос к одному сервису.
+    func complete(provider: LLMProvider, key: String, messages: [LLMMessage], maxTokens: Int = 800) async throws -> String {
+        guard let url = provider.chatURL else { throw LLMError.insecureURL }
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: Self.timeout)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let token, !token.isEmpty { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
-        let payload = Payload(
-            question: question,
-            answerHeadline: headline,
-            answerText: text,
-            facts: facts,
-            language: language.rawValue,
-            instruction: "Explain the computed answer in 2-3 sentences. Use only the numbers provided in answerHeadline, answerText and facts. Never invent new figures."
-        )
-        request.httpBody = try JSONEncoder().encode(payload)
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw URLError(.badServerResponse)
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        for (field, value) in provider.extraHeaders {
+            request.setValue(value, forHTTPHeaderField: field)
         }
-        return try JSONDecoder().decode(Response.self, from: data).text
+        request.httpBody = try JSONEncoder().encode(LLMChatRequest(model: provider.model, messages: messages, maxTokens: maxTokens))
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch let error as URLError {
+            if error.code == .cancelled { throw CancellationError() }
+            throw error.code == .timedOut ? LLMError.timeout : LLMError.noNetwork
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw LLMError.noNetwork
+        }
+        guard let http = response as? HTTPURLResponse else { throw LLMError.badResponse }
+        if let error = LLMError.from(status: http.statusCode) { throw error }
+        return try LLMResponseParser.text(from: data)
+    }
+
+    /// Вопрос с перебором: если активный сервис не ответил (сеть, 429, 5xx) — следующий с ключом.
+    func ask(messages: [LLMMessage], candidates: [LLMProvider]) async -> Result<LLMFallback.Outcome<String>, LLMError> {
+        await LLMFallback.run(candidates) { provider in
+            guard let key = LLMKeychain.key(for: provider) else { throw LLMError.notConfigured }
+            return try await complete(provider: provider, key: key, messages: messages)
+        }
+    }
+
+    /// «Проверить»: короткий тестовый запрос без данных пользователя.
+    func check(provider: LLMProvider, key: String) async throws -> String {
+        let messages = [
+            LLMMessage(role: .system, content: "Это проверка подключения. Ответь одним словом."),
+            LLMMessage(role: .user, content: "Скажи «готово».")
+        ]
+        return try await complete(provider: provider, key: key, messages: messages, maxTokens: 16)
     }
 }
