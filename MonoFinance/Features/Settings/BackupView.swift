@@ -145,7 +145,7 @@ struct BackupView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(Color.mono.background.ignoresSafeArea())
+        .background(MonoBackdrop())
         .navigationTitle(Text("Резервные копии"))
         .fileImporter(isPresented: $showsImporter, allowedContentTypes: [UTType(filenameExtension: BackupService.fileExtension) ?? .data, .data]) { result in
             guard case .success(let url) = result else { return }

@@ -76,7 +76,7 @@ struct SecuritySettingsView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(Color.mono.background.ignoresSafeArea())
+        .background(MonoBackdrop())
         .navigationTitle(Text("Приватность и защита"))
         .onAppear { lockEnabled = settings.appLockEnabled }
     }
@@ -200,7 +200,7 @@ struct SpeechSettingsView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(Color.mono.background.ignoresSafeArea())
+        .background(MonoBackdrop())
         .navigationTitle(Text("Голосовой ввод"))
         .task { refresh() }
     }
@@ -342,7 +342,7 @@ struct AISettingsView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(Color.mono.background.ignoresSafeArea())
+        .background(MonoBackdrop())
         .navigationTitle(Text("Ассистент и ИИ"))
     }
 }
@@ -419,7 +419,7 @@ struct BankSyncView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(Color.mono.background.ignoresSafeArea())
+        .background(MonoBackdrop())
         .navigationTitle(Text("Банки"))
     }
 
@@ -456,7 +456,7 @@ struct AboutView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(verbatim: "MONO")
                         .font(.system(size: 44, weight: .heavy).width(.expanded))
-                        .foregroundStyle(LinearGradient(colors: Color.mono.voiceGradient, startPoint: .leading, endPoint: .trailing))
+                        .foregroundStyle(Color.mono.textPrimary)
                     Text("Личные финансы без шума")
                         .monoFont(.title2)
                         .foregroundStyle(Color.mono.textPrimary)
@@ -481,7 +481,7 @@ struct AboutView: View {
     private func aboutBlock(_ title: LocalizedStringKey, _ text: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: 14) {
             Capsule(style: .continuous)
-                .fill(LinearGradient(colors: [Color.mono.accent, Color.mono.accent.opacity(0.2)], startPoint: .top, endPoint: .bottom))
+                .fill(Color.mono.accent)
                 .frame(width: 3)
             VStack(alignment: .leading, spacing: 6) {
                 Text(title)

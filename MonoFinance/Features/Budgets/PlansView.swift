@@ -79,20 +79,12 @@ struct PlansView: View {
         .toolbar(.hidden, for: .navigationBar)
     }
 
-    private func tint(_ status: BudgetStatus?) -> Color {
-        guard let status else { return Color.mono.accent }
-        switch status.state {
-        case .ok: return Color.mono.positive
-        case .warning: return Color.mono.warning
-        case .exceeded: return Color.mono.negative
-        }
-    }
 }
 
 extension BudgetStatus.State {
     var tint: Color {
         switch self {
-        case .ok: return Color.mono.positive
+        case .ok: return Color.mono.accent
         case .warning: return Color.mono.warning
         case .exceeded: return Color.mono.negative
         }
@@ -149,7 +141,7 @@ private struct MonthLimitCard: View {
                         if let daily = status.dailyAllowance {
                             HStack(spacing: 4) {
                                 Image(systemName: "calendar.badge.clock")
-                                MoneyText(money: daily, token: .caption, color: Color.mono.accent, compact: true)
+                                MoneyText(money: daily, token: .caption, color: Color.mono.accentText, compact: true)
                                 Text("в день")
                             }
                             .monoFont(.caption)
@@ -293,19 +285,19 @@ private struct GoalsSection: View {
     }
 }
 
-/// Плитка цели: вертикальная «колба», заполненная цветом цели по прогрессу.
+/// Плитка цели: вертикальная «колба», заполненная по прогрессу; достигнутая цель — зелёная.
 private struct GoalTile: View {
     let status: GoalStatus
     @Environment(FinanceStore.self) private var store
     @Environment(\.appLanguage) private var language
 
     var body: some View {
-        let color = status.goal.color.color
+        let color = status.isCompleted ? Color.mono.positive : Color.mono.accent
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Image(systemName: status.goal.icon)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(color)
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(Color.mono.textSecondary)
                 Spacer()
                 if status.isCompleted {
                     Image(systemName: "checkmark.seal.fill")
@@ -341,13 +333,16 @@ private struct GoalTile: View {
             GeometryReader { proxy in
                 ZStack(alignment: .bottom) {
                     Color.mono.surface1
-                    LinearGradient(colors: [color.opacity(0.42), color.opacity(0.12)], startPoint: .bottom, endPoint: .top)
-                        .frame(height: proxy.size.height * max(0.04, status.progress))
+                    VStack(spacing: 0) {
+                        Rectangle().fill(color.opacity(0.7)).frame(height: 1.5)
+                        LinearGradient(colors: [color.opacity(0.20), color.opacity(0.06)], startPoint: .top, endPoint: .bottom)
+                    }
+                    .frame(height: proxy.size.height * max(0.04, min(status.progress, 1)))
                 }
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: MonoTokens.Radius.xl, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: MonoTokens.Radius.xl, style: .continuous).strokeBorder(color.opacity(0.3), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: MonoTokens.Radius.xl, style: .continuous).strokeBorder(Color.mono.strokeSubtle, lineWidth: 1))
     }
 }
 

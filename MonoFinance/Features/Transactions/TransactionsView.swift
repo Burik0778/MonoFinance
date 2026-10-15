@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 import MonoCore
 
 /// История операций: поиск, фильтры, группировка по дням с итогом дня, удаление с возможностью вернуть.
@@ -53,6 +54,7 @@ struct TransactionsView: View {
                         }
                         .listRowBackground(Color.mono.surface1)
                         .listRowSeparatorTint(Color.mono.strokeSubtle)
+                        .alignmentGuide(.listRowSeparatorLeading) { _ in 52 }
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) { pendingDelete = transaction } label: {
                                 Label("Удалить", systemImage: "trash")
@@ -74,14 +76,14 @@ struct TransactionsView: View {
                             } label: {
                                 Label("Повторить", systemImage: "arrow.triangle.2.circlepath")
                             }
-                            .tint(Color.mono.accent)
+                            .tint(Color.mono.neutral)
                         }
                     }
                 } header: {
                     HStack {
                         Text(verbatim: DateFormatting.dayTitle(group.day, calendar: store.periods.calendar, language: language))
                             .monoFont(.subhead)
-                            .foregroundStyle(Color.mono.textSecondary)
+                            .foregroundStyle(Color.mono.textPrimary)
                         Spacer()
                         if group.spending.minorUnits > 0 {
                             MoneyText(money: group.spending.negated, token: .caption, color: Color.mono.textTertiary)
@@ -92,8 +94,9 @@ struct TransactionsView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .listSectionSpacing(14)
         .scrollContentBackground(.hidden)
-        .background(Color.mono.background.ignoresSafeArea())
+        .background(MonoBackdrop())
         .searchable(text: $filter.query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: Text("Магазин, заметка, сумма"))
         .navigationTitle(isRoot ? Text("Операции") : Text("Отобранные операции"))
         .navigationBarTitleDisplayMode(isRoot ? .large : .inline)
@@ -133,25 +136,47 @@ struct TransactionsView: View {
         }
     }
 
+    /// Шапка: расходы месяца крупно, доходы рядом и ритм трат по дням — сразу видно «тяжёлые» дни.
     private var header: some View {
         let analytics = store.analytics()
-        let month = analytics.summary(store.periods.range(for: .thisMonth, now: Date()))
-        return VStack(alignment: .leading, spacing: 8) {
-            Text(verbatim: DateFormatting.monthTitle(store.periods.monthKey(Date()), calendar: store.periods.calendar, language: language, includeYear: false))
-                .monoFont(.subhead)
-                .foregroundStyle(Color.mono.textSecondary)
-            HStack(alignment: .top, spacing: 16) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Kicker("Расходы")
-                    MoneyText(money: month.outflow, token: .title2, color: Color.mono.textPrimary)
-                }
+        let now = Date()
+        let range = store.periods.range(for: .thisMonth, now: now)
+        let month = analytics.summary(range)
+        let days = analytics.series(range, granularity: .day)
+        let today = store.periods.calendar.startOfDay(for: now)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(verbatim: DateFormatting.monthTitle(store.periods.monthKey(now), calendar: store.periods.calendar, language: language, includeYear: false))
+                    .textCase(.uppercase)
+                    .monoFont(.kicker)
+                    .foregroundStyle(Color.mono.textTertiary)
                 Spacer()
-                VStack(alignment: .trailing, spacing: 4) {
-                    Kicker("Доходы")
-                    MoneyText(money: month.income, token: .title2, sign: .always, color: Color.mono.positive)
+                HStack(spacing: 4) {
+                    Text("Доходы")
+                        .monoFont(.caption)
+                        .foregroundStyle(Color.mono.textTertiary)
+                    MoneyText(money: month.income, token: .subhead, sign: .always, color: month.income.isZero ? Color.mono.textSecondary : Color.mono.positive, compact: true)
                 }
             }
+            VStack(alignment: .leading, spacing: 2) {
+                MoneyText(money: month.outflow, token: .display)
+                Text("потрачено в этом месяце")
+                    .monoFont(.footnote)
+                    .foregroundStyle(Color.mono.textSecondary)
+            }
+            if days.count > 1 {
+                Chart(days) { point in
+                    BarMark(x: .value("День", point.date, unit: .day), y: .value("Расход", point.outflow.chartValue), width: .ratio(0.6))
+                        .clipShape(RoundedRectangle(cornerRadius: 1.5, style: .continuous))
+                        .foregroundStyle(store.periods.calendar.isDate(point.date, inSameDayAs: today) ? Color.mono.accentText : Color.mono.accent.opacity(point.date > today ? 0.0 : 0.45))
+                }
+                .chartXAxis(.hidden)
+                .chartYAxis(.hidden)
+                .frame(height: 44)
+                .accessibilityLabel(Text("Расходы по дням месяца"))
+            }
         }
+        .padding(.bottom, 4)
     }
 
     private var filterChips: some View {
@@ -209,8 +234,14 @@ struct TransactionsView: View {
         return order.map { day in
             let items = buckets[day] ?? []
             var spending = Money.zero(store.baseCurrency)
-            for item in items where item.kind == .expense || item.kind == .fee {
-                if let base = converter.toBase(item.amount) { spending += base }
+            // Итог дня — как в аналитике: расходы и комиссии минус возвраты, переводы не учитываются.
+            for item in items {
+                guard let base = converter.toBase(item.amount.magnitude) else { continue }
+                switch item.kind {
+                case .expense, .fee: spending += base
+                case .refund: spending -= base
+                default: break
+                }
             }
             return DayGroup(day: day, items: items, spending: spending)
         }

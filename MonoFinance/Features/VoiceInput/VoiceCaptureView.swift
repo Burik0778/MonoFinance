@@ -78,7 +78,7 @@ struct VoiceCaptureView: View {
     // MARK: - Запись
 
     private var captureContent: some View {
-        VStack(spacing: 22) {
+        VStack(spacing: 20) {
             Spacer(minLength: 8)
             if typing {
                 typedInput
@@ -90,23 +90,20 @@ struct VoiceCaptureView: View {
                     default: Task { await model.start(store: store, settings: settings) }
                     }
                 } label: {
-                    VoiceOrb(level: model.level, isActive: model.phase == .listening)
-                        .frame(width: 250, height: 250)
+                    VoiceOrb(level: model.level, isActive: model.phase == .listening, levels: model.levels)
+                        .frame(width: 270, height: 270)
                         .overlay {
                             Image(systemName: model.phase == .listening ? "stop.fill" : "mic.fill")
-                                .font(.system(size: 28, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.9))
+                                .font(.system(size: 26, weight: .semibold))
+                                .foregroundStyle(Color.mono.onAccent)
                                 .contentTransition(.symbolEffect(.replace))
                         }
                 }
-                .buttonStyle(PressableStyle(scale: 0.95))
+                .buttonStyle(PressableStyle(scale: 0.96))
                 .accessibilityLabel(model.phase == .listening ? Text("Остановить запись") : Text("Начать запись"))
 
+                statusLine
                 transcriptView
-                WaveformView(levels: model.levels)
-                    .frame(height: 36)
-                    .padding(.horizontal, 32)
-                    .opacity(model.phase == .listening ? 1 : 0.3)
             }
             if case .failed(let failure) = model.phase {
                 failureView(failure)
@@ -117,17 +114,38 @@ struct VoiceCaptureView: View {
         .padding(.bottom, 20)
     }
 
+    /// Состояние записи одной строкой: «Слушаю», «Разбираю», «Нажмите, чтобы говорить».
+    private var statusLine: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(model.phase == .listening ? Color.mono.negative : Color.mono.textTertiary)
+                .frame(width: 7, height: 7)
+                .opacity(model.phase == .listening ? 1 : 0.6)
+            Group {
+                switch model.phase {
+                case .listening: Text("Слушаю")
+                case .processing, .preparing: Text("Разбираю фразу")
+                default: Text("Нажмите и говорите")
+                }
+            }
+            .textCase(.uppercase)
+            .monoFont(.kicker)
+            .foregroundStyle(model.phase == .listening ? Color.mono.textPrimary : Color.mono.textTertiary)
+        }
+        .monoAnimation(.quick, value: model.phase)
+        .accessibilityElement(children: .combine)
+    }
+
     private var transcriptView: some View {
         Group {
             if model.transcript.isEmpty {
-                VStack(spacing: 10) {
-                    Text(model.phase == .listening ? "Говорите…" : "Нажмите на сферу и скажите")
-                        .monoFont(.title)
-                        .foregroundStyle(Color.mono.textPrimary)
-                    Text("«Вчера купил продукты в Корзинке на 245 тысяч с карты Капиталбанка»")
-                        .monoFont(.quote)
-                        .foregroundStyle(Color.mono.textTertiary)
-                        .multilineTextAlignment(.center)
+                VStack(spacing: 8) {
+                    ForEach(Self.examples, id: \.self) { example in
+                        Text(verbatim: "«\(example)»")
+                            .monoFont(.callout)
+                            .foregroundStyle(Color.mono.textTertiary)
+                            .multilineTextAlignment(.center)
+                    }
                 }
             } else {
                 Text(verbatim: model.transcript)
@@ -139,9 +157,15 @@ struct VoiceCaptureView: View {
             }
         }
         .padding(.horizontal, 28)
-        .frame(minHeight: 110)
+        .frame(minHeight: 96)
         .accessibilityAddTraits(.updatesFrequently)
     }
+
+    private static let examples = [
+        "Потратил 85 тысяч на обед",
+        "Вчера купил продукты на 230 тысяч с Капиталбанка",
+        "Перевёл миллион сум с Капиталбанка на Узум"
+    ]
 
     private var typedInput: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -154,7 +178,8 @@ struct VoiceCaptureView: View {
                 .submitLabel(.done)
                 .onSubmit { model.submitTyped(store: store) }
                 .padding(16)
-                .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.lg, style: .continuous).fill(Color.mono.surface2))
+                .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.lg, style: .continuous).fill(Color.mono.surface1))
+                .overlay(RoundedRectangle(cornerRadius: MonoTokens.Radius.lg, style: .continuous).strokeBorder(Color.mono.strokeStrong, lineWidth: 1))
             Text("Тот же разбор, что и для голоса. Подходит для узбекского и тех случаев, когда говорить неудобно.")
                 .monoFont(.caption)
                 .foregroundStyle(Color.mono.textTertiary)

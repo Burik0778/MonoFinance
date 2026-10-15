@@ -18,7 +18,7 @@ struct GoalDetailView: View {
         let now = Date()
         let status = store.analytics().goalStatuses([goal], contributions: store.contributions, balances: store.balances, now: now).first
         let contributions = store.contributions.filter { $0.goalID == goal.id }.sorted { $0.date > $1.date }
-        let color = goal.color.color
+        let color = Color.mono.accent
 
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {

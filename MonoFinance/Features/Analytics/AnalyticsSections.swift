@@ -293,10 +293,11 @@ struct CategoryDonutCard: View {
         return category.name
     }
 
+    /// Цвет сектора — ступень акцента по рангу: крупнейшая категория ярче, «Остальное» нейтрально.
     private func color(of slice: Slice) -> Color {
         if slice.isOther { return Color.mono.neutral }
-        guard let id = slice.categoryID, let category = store.categoryMap[id] else { return Color.mono.neutral }
-        return category.color.color
+        guard let index = slices.firstIndex(where: { $0.id == slice.id }) else { return Color.mono.neutral }
+        return Color.mono.chart(index)
     }
 
     /// `chartAngleSelection` отдаёт накопленное значение — находим сектор, в который оно попало.
@@ -347,18 +348,18 @@ struct TrendCard: View {
                 Spacer()
                 VStack(alignment: .trailing, spacing: 4) {
                     MoneyText(money: income, token: .callout, sign: .always, color: Color.mono.positive, compact: true)
-                    MoneyText(money: outflow.negated, token: .callout, color: Color.mono.negative, compact: true)
+                    MoneyText(money: outflow.negated, token: .callout, color: Color.mono.textPrimary, compact: true)
                 }
             }
             if points.count > 1 {
                 Chart {
                     ForEach(points) { point in
                         BarMark(x: .value("Период", point.date, unit: unit), y: .value("Доход", point.income.chartValue))
-                            .foregroundStyle(Color.mono.positive.gradient)
+                            .foregroundStyle(Color.mono.positive.opacity(0.85))
                             .cornerRadius(3)
                             .opacity(selected == nil || selected?.date == point.date ? 1 : 0.35)
                         BarMark(x: .value("Период", point.date, unit: unit), y: .value("Расход", -point.outflow.chartValue))
-                            .foregroundStyle(Color.mono.negative.gradient)
+                            .foregroundStyle(Color.mono.accent)
                             .cornerRadius(3)
                             .opacity(selected == nil || selected?.date == point.date ? 1 : 0.35)
                     }
@@ -490,14 +491,14 @@ struct MandatorySplitCard: View {
                 GeometryReader { proxy in
                     HStack(spacing: 3) {
                         segment(split.mandatory, total: total, width: proxy.size.width, color: Color.mono.accent)
-                        segment(split.optional, total: total, width: proxy.size.width, color: Color.mono.accent)
+                        segment(split.optional, total: total, width: proxy.size.width, color: Color.mono.chart(2))
                         segment(split.uncategorized, total: total, width: proxy.size.width, color: Color.mono.neutral)
                     }
                 }
                 .frame(height: 14)
                 HStack(alignment: .top, spacing: 12) {
                     legend("Обязательные", money: split.mandatory, share: split.mandatory.chartValue / total, color: Color.mono.accent)
-                    legend("Остальные", money: split.optional, share: split.optional.chartValue / total, color: Color.mono.accent)
+                    legend("Остальные", money: split.optional, share: split.optional.chartValue / total, color: Color.mono.chart(2))
                     if split.uncategorized.isPositive {
                         legend("Без категории", money: split.uncategorized, share: split.uncategorized.chartValue / total, color: Color.mono.neutral)
                     }
@@ -514,7 +515,7 @@ struct MandatorySplitCard: View {
     private func segment(_ money: Money, total: Double, width: CGFloat, color: Color) -> some View {
         if money.isPositive {
             Capsule(style: .continuous)
-                .fill(color.gradient)
+                .fill(color)
                 .frame(width: max(6, (width - 6) * money.chartValue / total))
         }
     }

@@ -118,7 +118,7 @@ struct TransactionDetailView: View {
             .padding(.vertical, 12)
         }
         .scrollIndicators(.hidden)
-        .background(Color.mono.background.ignoresSafeArea())
+        .background(MonoBackdrop())
         .navigationTitle(Text("Операция"))
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog("Удалить операцию?", isPresented: $confirmsDelete, titleVisibility: .visible) {

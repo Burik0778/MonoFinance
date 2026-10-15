@@ -61,7 +61,7 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 18) {
                 Text(verbatim: "MONO")
                     .font(.system(size: 64, weight: .heavy).width(.expanded))
-                    .foregroundStyle(LinearGradient(colors: Color.mono.voiceGradient, startPoint: .leading, endPoint: .trailing))
+                    .foregroundStyle(Color.mono.textPrimary)
                     .accessibilityAddTraits(.isHeader)
                 Text("Все ваши деньги — в одной ясной картине.")
                     .font(.system(size: 34, weight: .semibold, design: .default))
@@ -133,7 +133,7 @@ struct OnboardingView: View {
                         .frame(minHeight: 62)
                         .background(
                             RoundedRectangle(cornerRadius: MonoTokens.Radius.lg, style: .continuous)
-                                .fill(currency == option ? AnyShapeStyle(LinearGradient(colors: [Color.mono.accent, Color.mono.accent], startPoint: .leading, endPoint: .trailing)) : AnyShapeStyle(Color.mono.surface1))
+                                .fill(currency == option ? AnyShapeStyle(Color.mono.accent) : AnyShapeStyle(Color.mono.surface1))
                         )
                     }
                     .buttonStyle(PressableStyle(scale: 0.98))

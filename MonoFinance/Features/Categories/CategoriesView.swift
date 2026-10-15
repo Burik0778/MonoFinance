@@ -57,7 +57,7 @@ struct CategoriesView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(Color.mono.background.ignoresSafeArea())
+        .background(MonoBackdrop())
         .navigationTitle(Text("Категории"))
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -344,7 +344,7 @@ struct MerchantRulesView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(Color.mono.background.ignoresSafeArea())
+        .background(MonoBackdrop())
         .navigationTitle(Text("Выученные правила"))
     }
 }

@@ -147,7 +147,7 @@ struct SettingsView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(Color.mono.background.ignoresSafeArea())
+        .background(MonoBackdrop())
         .navigationTitle(Text("Настройки"))
         .confirmationDialog(store.isDemo ? "Выйти из демо-режима?" : "Включить демо-режим?", isPresented: $confirmsDemo, titleVisibility: .visible) {
             Button(store.isDemo ? "Выйти" : "Включить") {

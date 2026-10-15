@@ -41,21 +41,37 @@ struct AccountDetailView: View {
                 syncStatus
 
                 VStack(alignment: .leading, spacing: 14) {
-                    Kicker("Этот месяц по счёту")
+                    HStack {
+                        Kicker("Этот месяц по счёту")
+                        Spacer()
+                        Text("90 дней")
+                            .monoFont(.caption)
+                            .foregroundStyle(Color.mono.textTertiary)
+                    }
                     HStack(spacing: 12) {
                         stat("Пришло", value: (flow?.income ?? .zero(store.baseCurrency)) + (flow?.transfersIn ?? .zero(store.baseCurrency)), tint: Color.mono.positive)
-                        stat("Ушло", value: (flow?.spending ?? .zero(store.baseCurrency)) + (flow?.fees ?? .zero(store.baseCurrency)) + (flow?.transfersOut ?? .zero(store.baseCurrency)), tint: Color.mono.negative)
+                        stat("Ушло", value: (flow?.spending ?? .zero(store.baseCurrency)) + (flow?.fees ?? .zero(store.baseCurrency)) + (flow?.transfersOut ?? .zero(store.baseCurrency)), tint: Color.mono.textPrimary)
                     }
                     if history.count > 1 {
+                        let values = history.map(\.balance.chartValue)
+                        let low = values.min() ?? 0
+                        let high = values.max() ?? 1
+                        let pad = max((high - low) * 0.15, 1)
                         Chart(history) { point in
+                            AreaMark(x: .value("Дата", point.date),
+                                     yStart: .value("Основание", low - pad),
+                                     yEnd: .value("Баланс", point.balance.chartValue))
+                                .interpolationMethod(.monotone)
+                                .foregroundStyle(LinearGradient(colors: [Color.mono.accent.opacity(0.22), Color.mono.accent.opacity(0)], startPoint: .top, endPoint: .bottom))
                             LineMark(x: .value("Дата", point.date), y: .value("Баланс", point.balance.chartValue))
                                 .interpolationMethod(.monotone)
-                                .foregroundStyle(current.tint)
-                                .lineStyle(StrokeStyle(lineWidth: 2.2, lineCap: .round))
+                                .foregroundStyle(Color.mono.accentText)
+                                .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round))
                         }
+                        .chartYScale(domain: (low - pad)...(high + pad))
                         .chartYAxis(.hidden)
                         .chartXAxis(.hidden)
-                        .frame(height: 70)
+                        .frame(height: 80)
                         .accessibilityLabel(Text("Баланс счёта за 90 дней"))
                     }
                     if current.currency != store.baseCurrency {
@@ -84,6 +100,7 @@ struct AccountDetailView: View {
                                                    calendar: store.periods.calendar)
                                 }
                                 .buttonStyle(.plain)
+                                if transaction.id != transactions.prefix(60).last?.id { Hairline(inset: 52) }
                             }
                         }
                         if transactions.count > 60 {
@@ -115,7 +132,7 @@ struct AccountDetailView: View {
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
-        .background(Color.mono.background.ignoresSafeArea())
+        .background(MonoBackdrop())
         .navigationTitle(Text(verbatim: current.displayName))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -150,7 +167,7 @@ struct AccountDetailView: View {
                         .foregroundStyle(Color.mono.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .monoSurface(level: 1, radius: MonoTokens.Radius.md, padding: 14)
+                .padding(.horizontal, 4)
             }
         }
     }
@@ -164,8 +181,8 @@ struct AccountDetailView: View {
                 Image(systemName: symbol)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Color.mono.textPrimary)
-                    .frame(width: 48, height: 48)
-                    .background(Circle().fill(Color.mono.surface2))
+                    .frame(width: 52, height: 52)
+                    .background(Circle().fill(Color.mono.surface1))
                     .overlay(Circle().strokeBorder(Color.mono.strokeSubtle, lineWidth: 1))
                 Text(title)
                     .monoFont(.caption)
@@ -211,6 +228,7 @@ struct SetBalanceView: View {
             }
             Text(verbatim: (isNegative ? MoneyFormatter.minus : "") + display)
                 .font(.system(size: 44, weight: .semibold, design: .default).monospacedDigit())
+                .tracking(-1.2)
                 .foregroundStyle(entry.isEmpty ? Color.mono.textTertiary : Color.mono.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)

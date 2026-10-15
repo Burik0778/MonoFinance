@@ -32,10 +32,10 @@ struct VoiceDraftCard: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
-            // Цветная кромка-статус: изумруд — готово, мандарин — нужно уточнить.
+            // Кромка-статус: зелёная — готово, янтарная — нужно уточнить.
             Capsule(style: .continuous)
-                .fill(LinearGradient(colors: [statusTint, statusTint.opacity(0.15)], startPoint: .top, endPoint: .bottom))
-                .frame(width: 3)
+                .fill(statusTint)
+                .frame(width: 2)
                 .padding(.vertical, 18)
                 .padding(.trailing, 14)
             VStack(alignment: .leading, spacing: 14) {
@@ -113,7 +113,10 @@ struct VoiceDraftCard: View {
     }
 
     private var kindTint: Color {
-        draft.kind == .expense ? Color.mono.accent : draft.kind.tint
+        switch draft.kind {
+        case .income, .refund: return Color.mono.positive
+        default: return Color.mono.accentText
+        }
     }
 
     // MARK: - Сумма

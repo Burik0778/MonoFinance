@@ -101,7 +101,7 @@ struct ImportFlowView: View {
                         } else {
                             Image(systemName: "doc.badge.arrow.up")
                                 .font(.system(size: 34, weight: .semibold))
-                                .foregroundStyle(LinearGradient(colors: [Color.mono.accent, Color.mono.accent], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .foregroundStyle(Color.mono.accentText)
                             Text("Выбрать файл")
                                 .monoFont(.headline)
                                 .foregroundStyle(Color.mono.textPrimary)
@@ -346,7 +346,7 @@ private struct StepIndicator: View {
             ForEach(0..<4, id: \.self) { index in
                 VStack(alignment: .leading, spacing: 6) {
                     Capsule()
-                        .fill(index <= step.rawValue ? AnyShapeStyle(LinearGradient(colors: [Color.mono.accent, Color.mono.accent], startPoint: .leading, endPoint: .trailing)) : AnyShapeStyle(Color.mono.surface3))
+                        .fill(index <= step.rawValue ? AnyShapeStyle(Color.mono.accent) : AnyShapeStyle(Color.mono.surface3))
                         .frame(height: 4)
                     Text(titles[index])
                         .monoFont(.caption)

@@ -53,7 +53,7 @@ struct RecurringListView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(Color.mono.background.ignoresSafeArea())
+        .background(MonoBackdrop())
         .navigationTitle(Text("Регулярные платежи"))
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

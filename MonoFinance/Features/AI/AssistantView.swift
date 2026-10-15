@@ -135,7 +135,7 @@ struct AssistantView: View {
                     .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
-                    .background(Circle().fill(LinearGradient(colors: [Color.mono.accent, Color.mono.accent], startPoint: .topLeading, endPoint: .bottomTrailing)))
+                    .background(Circle().fill(Color.mono.accent))
             }
             .buttonStyle(PressableStyle(scale: 0.9))
             .disabled(question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -201,7 +201,7 @@ private struct ExchangeView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top, spacing: 12) {
                     Capsule(style: .continuous)
-                        .fill(LinearGradient(colors: [Color.mono.accent, Color.mono.accent.opacity(0.2)], startPoint: .top, endPoint: .bottom))
+                        .fill(Color.mono.accent)
                         .frame(width: 3)
                     VStack(alignment: .leading, spacing: 8) {
                         Text(verbatim: hideAmounts && exchange.answer.hasData ? "•••" : exchange.answer.headline)
