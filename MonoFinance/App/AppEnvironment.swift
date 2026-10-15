@@ -31,6 +31,7 @@ final class AppEnvironment {
             settings.onboardingCompleted = !arguments.contains("-monoOnboarding")
             settings.appLockEnabled = false
             settings.hideAmounts = false
+            settings.appearance = arguments.contains("-monoLight") ? .light : .dark
         }
         #endif
         self.settings = settings
@@ -86,6 +87,7 @@ final class AppEnvironment {
         case "expense": router.sheet = .transaction(TransactionEditorContext(kind: .expense))
         case "transfer": router.sheet = .transaction(TransactionEditorContext(kind: .transfer))
         case "account": router.sheet = .account(nil)
+        case "voice": router.sheet = .voice(prefill: nil)
         default: break
         }
     }
@@ -188,6 +190,15 @@ enum AppCommand: Equatable {
 
 /// Флаги для снимков экрана в симуляторе (только в отладочной сборке).
 enum DebugFlags {
+    /// `-monoVoiceIdle` — голосовой экран открывается без автозапуска записи (в симуляторе нет микрофона).
+    static let voiceIdle: Bool = {
+        #if DEBUG
+        return ProcessInfo.processInfo.arguments.contains("-monoVoiceIdle")
+        #else
+        return false
+        #endif
+    }()
+
     /// `-monoScroll top|center|bottom` — начальная позиция прокрутки длинных экранов.
     static let scrollAnchor: UnitPoint = {
         #if DEBUG

@@ -35,7 +35,7 @@ struct VoiceCaptureView: View {
         .task {
             if let prefill, !prefill.isEmpty {
                 model.parse(prefill, store: store)
-            } else if model.phase == .idle {
+            } else if model.phase == .idle && !DebugFlags.voiceIdle {
                 await model.start(store: store, settings: settings)
             }
         }

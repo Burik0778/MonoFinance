@@ -169,6 +169,13 @@ jobs:
           shoot 14-transaction -monoRoute transaction
           shoot 15-categories -monoRoute categories
           shoot 16-transfer -monoSheet transfer
+          shoot 17-voice-idle -monoSheet voice -monoVoiceIdle
+          # Светлая тема: проверка, что токены читаются и в ней.
+          xcrun simctl ui "$UDID" appearance light || true
+          shoot 18-light-overview -monoTab overview -monoLight
+          shoot 19-light-transactions -monoTab transactions -monoLight
+          shoot 20-light-plans -monoTab plans -monoLight
+          xcrun simctl ui "$UDID" appearance dark || true
           ls -la shots
       - name: Publish screenshots to ci-shots branch
         if: always()
