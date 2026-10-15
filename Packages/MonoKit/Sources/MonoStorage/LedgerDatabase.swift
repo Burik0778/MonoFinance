@@ -563,10 +563,18 @@ public final class LedgerDatabase {
     }
 
     /// Записывает импортированные операции одной транзакцией. Повторы по отпечатку пропускаются.
-    public func importTransactions(_ transactions: [FinanceTransaction]) throws -> ImportWriteResult {
+    /// - Parameter replacing: операции из других выписок, которые заменяются новыми (обычный расход из выписки банка
+    ///   становится переводом между своими картами из Payme). Удаляются в той же транзакции.
+    public func importTransactions(_ transactions: [FinanceTransaction], replacing: [UUID] = []) throws -> ImportWriteResult {
         try connection.transaction {
             var result = ImportWriteResult(inserted: 0, skippedDuplicates: 0)
             var seen = Set<String>()
+            for id in Set(replacing) {
+                guard let before = try transaction(id: id), before.kind != .transfer else { continue }
+                try connection.run("UPDATE transactions SET linked_transaction_id = NULL WHERE linked_transaction_id = ?", [.uuid(id)])
+                try connection.run("DELETE FROM transactions WHERE id = ?", [.uuid(id)])
+                try audit(.deleted, before: before, after: nil)
+            }
             for transaction in transactions {
                 if let fingerprint = transaction.importFingerprint {
                     let exists = (try connection.scalarInt("SELECT 1 FROM transactions WHERE import_fingerprint = ?", [.text(fingerprint)])) != nil

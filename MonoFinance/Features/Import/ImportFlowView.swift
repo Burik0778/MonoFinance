@@ -3,8 +3,8 @@ import UniformTypeIdentifiers
 import MonoCore
 import MonoImport
 
-/// Импорт выписки CSV/XLSX. Форматы конкретных банков не считаются проверенными:
-/// колонки определяются автоматически, пользователь видит и подтверждает сопоставление и каждую строку.
+/// Импорт выписки CSV/XLSX/PDF. Проверенные форматы (Payme, PDF Kapitalbank и Uzum Bank) распознаются сами,
+/// для остальных колонки определяются автоматически; пользователь видит и подтверждает сопоставление и каждую строку.
 struct ImportFlowView: View {
     let preselectedAccount: Account?
 
@@ -18,6 +18,7 @@ struct ImportFlowView: View {
     private static var contentTypes: [UTType] {
         var types: [UTType] = [.commaSeparatedText, .tabSeparatedText, .plainText]
         if let xlsx = UTType(filenameExtension: "xlsx") { types.append(xlsx) }
+        types.append(.pdf)
         return types
     }
 
@@ -80,7 +81,7 @@ struct ImportFlowView: View {
                     Text("Загрузите выписку из банка")
                         .monoFont(.display)
                         .foregroundStyle(Color.mono.textPrimary)
-                    Text("Экспортируйте историю операций в CSV или Excel (XLSX) из приложения или интернет-банка и выберите файл. Файл обрабатывается только на этом iPhone.")
+                    Text("Экспортируйте историю операций в CSV, Excel (XLSX) или PDF из приложения или интернет-банка и выберите файл. Файл обрабатывается только на этом iPhone.")
                         .monoFont(.callout)
                         .foregroundStyle(Color.mono.textSecondary)
                 }
@@ -105,7 +106,7 @@ struct ImportFlowView: View {
                             Text("Выбрать файл")
                                 .monoFont(.headline)
                                 .foregroundStyle(Color.mono.textPrimary)
-                            Text(verbatim: "CSV · XLSX")
+                            Text(verbatim: "CSV · XLSX · PDF")
                                 .monoFont(.caption)
                                 .foregroundStyle(Color.mono.textTertiary)
                         }
@@ -128,7 +129,8 @@ struct ImportFlowView: View {
                     note("checkmark.shield", "Повторный импорт того же файла не создаст дублей: уже загруженные строки распознаются и пропускаются.")
                     note("hand.raised", "Операции, похожие на внесённые вручную или голосом, по умолчанию не отмечены — решаете вы.")
                     note("arrow.left.arrow.right", "Выписка Payme со всеми картами распознаётся сама. Переводы между своими картами становятся переводами, а не расходами; комиссия записывается отдельно.")
-                    note("questionmark.diamond", "Готовых шаблонов для выписок Kapitalbank, Uzum, Orient Finans и Trastbank пока нет: их форматы не проверены на реальных файлах. Колонки определяются автоматически, проверьте их на следующем шаге.")
+                    note("doc.richtext", "PDF-выписки Kapitalbank и Uzum Bank распознаются сами. Если та же карта уже загружена из Payme, совпадающие операции не задвоятся: они отмечаются как «уже есть из другой выписки».")
+                    note("questionmark.diamond", "Для Orient Finans и Trastbank шаблонов пока нет: их форматы не проверены на реальных файлах. Колонки определяются автоматически, проверьте их на следующем шаге.")
                     note("xmark.bin", "Старый формат Excel 97–2003 (.xls) не поддерживается — сохраните файл как XLSX или CSV.")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -170,7 +172,7 @@ struct ImportFlowView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     if let fileName = model.fileName {
                         HStack(spacing: 10) {
-                            Image(systemName: model.document?.format == .xlsx ? "tablecells" : "doc.plaintext")
+                            Image(systemName: model.document?.format == .pdf ? "doc.richtext" : (model.document?.format == .xlsx ? "tablecells" : "doc.plaintext"))
                                 .foregroundStyle(Color.mono.accentText)
                             Text(verbatim: fileName)
                                 .monoFont(.subhead)
@@ -204,17 +206,19 @@ struct ImportFlowView: View {
                         }
                     }
 
-                    FormSection(title: "Строка заголовков") {
-                        Stepper(value: Binding(get: { (model.mapping.headerRow ?? -1) + 1 }, set: { model.setHeaderRow($0 == 0 ? nil : $0 - 1, store: store) }),
-                                in: 0...max(0, min(30, (model.table?.rows.count ?? 1) - 1))) {
-                            Text(verbatim: model.mapping.headerRow.map { Phrase(ru: "Строка \($0 + 1)", uz: "\($0 + 1)-qator", en: "Row \($0 + 1)")(language) }
-                                 ?? Phrase(ru: "Без заголовка", uz: "Sarlavhasiz", en: "No header")(language))
-                                .monoFont(.body)
-                                .foregroundStyle(Color.mono.textPrimary)
+                    if model.document?.format != .pdf {
+                        FormSection(title: "Строка заголовков") {
+                            Stepper(value: Binding(get: { (model.mapping.headerRow ?? -1) + 1 }, set: { model.setHeaderRow($0 == 0 ? nil : $0 - 1, store: store) }),
+                                    in: 0...max(0, min(30, (model.table?.rows.count ?? 1) - 1))) {
+                                Text(verbatim: model.mapping.headerRow.map { Phrase(ru: "Строка \($0 + 1)", uz: "\($0 + 1)-qator", en: "Row \($0 + 1)")(language) }
+                                     ?? Phrase(ru: "Без заголовка", uz: "Sarlavhasiz", en: "No header")(language))
+                                    .monoFont(.body)
+                                    .foregroundStyle(Color.mono.textPrimary)
+                            }
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: 50)
+                            .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.surface2))
                         }
-                        .padding(.horizontal, 14)
-                        .frame(minHeight: 50)
-                        .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.surface2))
                     }
 
                     FormSection(title: "Что в колонках", footer: "Нажмите на заголовок колонки, чтобы изменить её роль. Нужны как минимум дата и сумма (или списание / зачисление).") {
@@ -225,7 +229,7 @@ struct ImportFlowView: View {
                         }
                     }
 
-                    if model.mapping.column(.amount) != nil && model.mapping.column(.debit) == nil && model.mapping.column(.credit) == nil {
+                    if model.document?.format != .pdf && model.mapping.column(.amount) != nil && model.mapping.column(.debit) == nil && model.mapping.column(.credit) == nil {
                         FormSection(title: "Знак суммы") {
                             SegmentedPills(options: [AmountSignConvention.negativeIsOutflow, .positiveIsOutflow],
                                            selection: $model.mapping.signConvention,
@@ -247,6 +251,14 @@ struct ImportFlowView: View {
                     } else {
                         FormSection(title: "Счёт") {
                             AccountPickerMenu(accounts: store.activeAccounts, selection: $model.accountID)
+                        }
+                    }
+
+                    if model.hasDepositRows {
+                        FormSection(title: "Вклад", footer: "Строки вроде «Перевод с DEPOSIT на VISA» — это ваши деньги со своего вклада, а не доход. Выберите счёт вклада, и они станут переводами. Без счёта они останутся доходами и расходами.") {
+                            DepositAccountMenu(accounts: store.activeAccounts, selection: model.depositAccountID,
+                                               onSelect: { model.depositAccountID = $0; model.preview = nil },
+                                               onCreate: { model.createDepositAccount(store: store) })
                         }
                     }
 
@@ -524,8 +536,18 @@ private struct PreviewSummary: View {
                     }
                 }
             }
-            if preview.duplicateCount > 0 {
-                Label { Text("Похожих или уже загруженных строк: \(preview.duplicateCount). Они не отмечены.") } icon: { Image(systemName: "square.on.square") }
+            if preview.replacedCount > 0 {
+                Label { Text("Станут переводами вместо расходов и доходов из другой выписки: \(preview.replacedCount).") } icon: { Image(systemName: "arrow.triangle.2.circlepath") }
+                    .monoFont(.footnote)
+                    .foregroundStyle(Color.mono.textPrimary)
+            }
+            if preview.elsewhereCount > 0 {
+                Label { Text("Уже есть из другой выписки (например, Payme): \(preview.elsewhereCount). Они не задвоятся и не отмечены.") } icon: { Image(systemName: "checkmark.shield") }
+                    .monoFont(.footnote)
+                    .foregroundStyle(Color.mono.textSecondary)
+            }
+            if preview.duplicateCount - preview.elsewhereCount > 0 {
+                Label { Text("Похожих или уже загруженных строк: \(preview.duplicateCount - preview.elsewhereCount). Они не отмечены.") } icon: { Image(systemName: "square.on.square") }
                     .monoFont(.footnote)
                     .foregroundStyle(Color.mono.warning)
             }
@@ -565,8 +587,8 @@ private struct CandidateRow: View {
                         .foregroundStyle(locked ? Color.mono.textTertiary : Color.mono.textPrimary)
                         .lineLimit(1)
                     Spacer(minLength: 8)
-                    if let transfer = candidate.ownTransfer {
-                        MoneyText(money: transfer.received, token: .amountRow, color: Color.mono.textSecondary)
+                    if candidate.isTransfer {
+                        MoneyText(money: candidate.ownTransfer?.received ?? candidate.amount, token: .amountRow, color: Color.mono.textSecondary)
                     } else {
                         MoneyText(money: candidate.direction == .outflow ? candidate.amount.negated : candidate.amount, token: .amountRow,
                                   color: candidate.direction == .inflow ? Color.mono.positive : Color.mono.textPrimary)
@@ -574,7 +596,7 @@ private struct CandidateRow: View {
                 }
                 HStack(spacing: 6) {
                     Text(verbatim: DateFormatting.short(candidate.date, calendar: store.periods.calendar, language: language))
-                    if showsAccount, candidate.ownTransfer == nil, let account = store.accountMap[candidate.accountID] {
+                    if showsAccount, !candidate.isTransfer, let account = store.accountMap[candidate.accountID] {
                         Text(verbatim: "· \(account.displayName)")
                     }
                     if candidate.kind == .fee || candidate.kind == .refund {
@@ -584,9 +606,9 @@ private struct CandidateRow: View {
                 .monoFont(.caption)
                 .foregroundStyle(Color.mono.textTertiary)
 
-                if let transfer = candidate.ownTransfer {
+                if candidate.isTransfer {
                     HStack(spacing: 8) {
-                        if let fee = transfer.fee {
+                        if let fee = candidate.ownTransfer?.fee {
                             HStack(spacing: 3) {
                                 Text("Комиссия")
                                 MoneyText(money: fee, token: .caption, color: Color.mono.textTertiary)
@@ -631,6 +653,12 @@ private struct CandidateRow: View {
                     tag("Уже импортирована — будет пропущена", color: Color.mono.neutral)
                 case .possible(let existingID):
                     tag(possibleText(existingID), color: Color.mono.warning)
+                case .importedElsewhere(let existingID, let replaceable):
+                    if replaceable && candidate.isTransfer {
+                        tag("Заменит такую же операцию из другой выписки: станет переводом", color: Color.mono.textSecondary)
+                    } else {
+                        tag(elsewhereText(existingID), color: Color.mono.textSecondary)
+                    }
                 case .none:
                     EmptyView()
                 }
@@ -645,9 +673,9 @@ private struct CandidateRow: View {
 
     /// «Перевод · Kapital → Orient» для пары, иначе продавец или описание.
     private var title: String {
-        if let transfer = candidate.ownTransfer {
-            let from = store.accountMap[candidate.accountID]?.displayName ?? ""
-            let to = store.accountMap[transfer.destinationAccountID]?.displayName ?? ""
+        if let route = candidate.transferRoute {
+            let from = store.accountMap[route.from]?.displayName ?? ""
+            let to = store.accountMap[route.to]?.displayName ?? ""
             return "\(TransactionKind.transfer.title(language)) · \(from) → \(to)"
         }
         return candidate.merchant ?? (candidate.description.isEmpty ? candidate.kind.title(language) : candidate.description)
@@ -666,6 +694,59 @@ private struct CandidateRow: View {
             return "Похожа на операцию от \(date) (\(existing.merchant ?? existing.kind.title(language)))"
         }
         return "Похожа на уже внесённую операцию"
+    }
+
+    private func elsewhereText(_ id: UUID) -> LocalizedStringKey {
+        if let existing = store.transaction(id: id) {
+            let date = DateFormatting.short(existing.date, calendar: store.periods.calendar, language: language)
+            return "Уже есть из другой выписки: \(date), \(existing.merchant ?? existing.note ?? existing.kind.title(language)). Не задвоится"
+        }
+        return "Уже есть из другой выписки. Не задвоится"
+    }
+}
+
+/// Счёт вклада для строк «Перевод с DEPOSIT на карту».
+private struct DepositAccountMenu: View {
+    let accounts: [Account]
+    let selection: UUID?
+    let onSelect: (UUID?) -> Void
+    let onCreate: () -> Void
+
+    var body: some View {
+        let selected = selection.flatMap { id in accounts.first { $0.id == id } }
+        Menu {
+            Button("Не связывать") { onSelect(nil) }
+            ForEach(accounts) { account in
+                Button {
+                    onSelect(account.id)
+                } label: {
+                    if account.id == selection {
+                        Label(account.displayName, systemImage: "checkmark")
+                    } else {
+                        Text(verbatim: account.displayName)
+                    }
+                }
+            }
+            Divider()
+            Button(action: onCreate) {
+                Label("Создать счёт «Вклад»", systemImage: "plus")
+            }
+        } label: {
+            HStack {
+                Image(systemName: "building.columns")
+                    .foregroundStyle(Color.mono.accentText)
+                Text(verbatim: selected?.displayName ?? String(localized: "Не связывать"))
+                    .monoFont(.body)
+                    .foregroundStyle(selected == nil ? Color.mono.textSecondary : Color.mono.textPrimary)
+                Spacer()
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.mono.textTertiary)
+            }
+            .padding(.horizontal, 14)
+            .frame(minHeight: 50)
+            .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.surface2))
+        }
     }
 }
 

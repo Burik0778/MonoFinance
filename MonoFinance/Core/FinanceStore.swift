@@ -249,9 +249,9 @@ final class FinanceStore {
 
     func deleteRate(_ currency: Currency) throws { try perform { try database.deleteExchangeRate(currency) } }
 
-    func importTransactions(_ transactions: [FinanceTransaction]) throws -> ImportWriteResult {
+    func importTransactions(_ transactions: [FinanceTransaction], replacing: [UUID] = []) throws -> ImportWriteResult {
         var result = ImportWriteResult(inserted: 0, skippedDuplicates: 0)
-        try perform { result = try database.importTransactions(transactions) }
+        try perform { result = try database.importTransactions(transactions, replacing: replacing) }
         return result
     }
 

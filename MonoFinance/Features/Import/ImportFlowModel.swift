@@ -30,6 +30,12 @@ final class ImportFlowModel {
     /// Карты в выписке сразу по нескольким картам и выбранные для них счета (нет записи — карта не импортируется).
     private(set) var cards: [StatementCard] = []
     var cardAccounts: [String: UUID] = [:]
+    /// В выписке есть переводы со своим вкладом («Перевод с DEPOSIT на VISA»).
+    private(set) var hasDepositRows = false
+    /// Счёт вклада для таких строк; `nil` — останутся доходами и расходами.
+    var depositAccountID: UUID?
+    /// Банк распознанного формата.
+    private(set) var formatBank: Bank?
     var preview: ImportPreview?
     var rememberMapping = true
     private(set) var isWorking = false
@@ -85,6 +91,7 @@ final class ImportFlowModel {
         let suggested = adapter.mapping(for: table, calendar: store.periods.calendar)
         mapping = suggested
         formatName = adapter.displayName
+        formatBank = adapter.bank
         appliedProfileName = nil
         cardAccounts = [:]
         var savedCards: [String: UUID] = [:]
@@ -97,6 +104,39 @@ final class ImportFlowModel {
             savedCards = profile.cardAccounts ?? [:]
         }
         refreshCards(store: store, saved: savedCards)
+        refreshDeposit(store: store)
+    }
+
+    /// Есть ли строки со вкладом и какой счёт вклада предложить: единственный вклад или накопительный счёт (того же банка, если их несколько).
+    private func refreshDeposit(store: FinanceStore) {
+        guard let table else { return }
+        hasDepositRows = table.rows.dropFirst(mapping.firstDataRow).contains { row in
+            ImportPipeline.isDepositTransfer(row.map(\.text).joined(separator: " "))
+        }
+        guard hasDepositRows else { depositAccountID = nil; return }
+        if let id = depositAccountID, store.accountMap[id]?.isArchived == false { return }
+        let deposits = store.activeAccounts.filter { $0.kind == .deposit || $0.kind == .savings }
+        let bank = formatBank ?? cardAccounts.values.compactMap { store.accountMap[$0]?.bank }.first ?? accountID.flatMap { store.accountMap[$0]?.bank }
+        let sameBank = deposits.filter { $0.bank == bank }
+        if sameBank.count == 1 {
+            depositAccountID = sameBank[0].id
+        } else if deposits.count == 1 {
+            depositAccountID = deposits[0].id
+        }
+    }
+
+    /// «Создать счёт «Вклад»» — пустой вклад в банке выписки; остаток можно указать позже.
+    func createDepositAccount(store: FinanceStore) {
+        let statementAccount = cardAccounts.values.compactMap { store.accountMap[$0] }.first ?? accountID.flatMap { store.accountMap[$0] }
+        let bank = formatBank ?? statementAccount?.bank ?? .other
+        let account = Account(bank: bank, name: String(localized: "Вклад"), kind: .deposit, currency: statementAccount?.currency ?? .uzs)
+        do {
+            try store.createAccount(account, openingBalance: nil)
+            depositAccountID = account.id
+            preview = nil
+        } catch {
+            self.error = AppError(error).message
+        }
     }
 
     /// Карты из колонки «Номер карты» и счета для них: сохранённые → по последним цифрам или банку → единственная карта на выбранный счёт.
@@ -125,14 +165,15 @@ final class ImportFlowModel {
 
     private func pipeline(store: FinanceStore, fingerprints: Set<String>) -> ImportPipeline? {
         let accounts = cardAccounts.compactMapValues { store.accountMap[$0] }
+        let deposit = hasDepositRows ? depositAccountID.flatMap { store.accountMap[$0] } : nil
         if isMultiCard {
             guard let first = cards.compactMap({ accounts[$0.id] }).first else { return nil }
             return ImportPipeline(account: first, cardAccounts: accounts, existing: store.transactions, existingFingerprints: fingerprints,
-                                  categorizer: store.categorizer(), calendar: store.periods.calendar)
+                                  depositAccount: deposit, categorizer: store.categorizer(), calendar: store.periods.calendar)
         }
         guard let accountID, let account = store.accountMap[accountID] else { return nil }
         return ImportPipeline(account: account, existing: store.transactions, existingFingerprints: fingerprints,
-                              categorizer: store.categorizer(), calendar: store.periods.calendar)
+                              depositAccount: deposit, categorizer: store.categorizer(), calendar: store.periods.calendar)
     }
 
     var canBuildPreview: Bool {
@@ -225,7 +266,7 @@ final class ImportFlowModel {
             return
         }
         do {
-            result = try store.importTransactions(transactions)
+            result = try store.importTransactions(transactions, replacing: preview.replacedTransactionIDs)
             if rememberMapping {
                 let signature = ColumnDetector.signature(for: table, mapping: mapping)
                 let profile = ImportProfile(signature: signature, name: profileName(account: account), mapping: mapping,

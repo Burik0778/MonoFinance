@@ -32,6 +32,7 @@ public enum CellValue: Equatable, Sendable {
 public enum ImportFormat: String, Sendable, Codable {
     case csv
     case xlsx
+    case pdf
 }
 
 /// Лист таблицы.
@@ -67,11 +68,19 @@ public enum ImportError: Error, Equatable, Sendable {
     case invalidXML
     case noDataRows
     case mappingIncomplete
+    /// PDF не открывается.
+    case corruptPDF
+    /// PDF защищён паролем.
+    case lockedPDF
+    /// PDF-выписка неизвестного банка.
+    case unsupportedPDF
 
     public func message(_ language: AppLanguage) -> String {
         switch self {
         case .unsupportedFormat:
-            return Phrase(ru: "Поддерживаются файлы CSV и XLSX.", uz: "CSV va XLSX fayllari qo‘llab-quvvatlanadi.", en: "CSV and XLSX files are supported.")(language)
+            return Phrase(ru: "Поддерживаются файлы CSV, XLSX и PDF-выписки Kapitalbank и Uzum Bank.",
+                          uz: "CSV, XLSX fayllari va Kapitalbank, Uzum Bank PDF ko‘chirmalari qo‘llab-quvvatlanadi.",
+                          en: "CSV, XLSX files and Kapitalbank / Uzum Bank PDF statements are supported.")(language)
         case .emptyFile:
             return Phrase(ru: "Файл пустой.", uz: "Fayl bo‘sh.", en: "The file is empty.")(language)
         case .unreadableText:
@@ -86,6 +95,15 @@ public enum ImportError: Error, Equatable, Sendable {
             return Phrase(ru: "Не найдено строк с операциями.", uz: "Operatsiyali qatorlar topilmadi.", en: "No transaction rows found.")(language)
         case .mappingIncomplete:
             return Phrase(ru: "Укажите колонки даты и суммы.", uz: "Sana va summa ustunlarini belgilang.", en: "Choose the date and amount columns.")(language)
+        case .corruptPDF:
+            return Phrase(ru: "Не удалось открыть PDF.", uz: "PDF faylini ochib bo‘lmadi.", en: "Couldn't open the PDF.")(language)
+        case .lockedPDF:
+            return Phrase(ru: "PDF защищён паролем. Сохраните выписку без пароля.", uz: "PDF parol bilan himoyalangan. Ko‘chirmani parolsiz saqlang.",
+                          en: "The PDF is password-protected. Save the statement without a password.")(language)
+        case .unsupportedPDF:
+            return Phrase(ru: "Эта PDF-выписка не распознана. Сейчас понимаем выписки Kapitalbank и Uzum Bank, для других банков выгрузите CSV или XLSX.",
+                          uz: "Bu PDF ko‘chirma tanilmadi. Hozircha Kapitalbank va Uzum Bank ko‘chirmalari tushuniladi, boshqa banklar uchun CSV yoki XLSX yuklang.",
+                          en: "This PDF statement isn't recognized. Kapitalbank and Uzum Bank are supported; for other banks export CSV or XLSX.")(language)
         }
     }
 }

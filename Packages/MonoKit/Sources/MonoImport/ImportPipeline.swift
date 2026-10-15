@@ -7,6 +7,9 @@ public enum ImportReader {
     public static func read(data: Data, fileName: String) throws -> ImportDocument {
         guard !data.isEmpty else { throw ImportError.emptyFile }
         let lower = fileName.lowercased()
+        if data.starts(with: Array("%PDF".utf8)) || lower.hasSuffix(".pdf") {
+            return ImportDocument(format: .pdf, tables: [try readPDF(data)])
+        }
         let isZip = data.count > 4 && data[data.startIndex] == 0x50 && data[data.startIndex + 1] == 0x4B
         if isZip {
             return ImportDocument(format: .xlsx, tables: try XLSXReader.read(data))
@@ -16,6 +19,17 @@ public enum ImportReader {
             throw ImportError.unsupportedFormat
         }
         return ImportDocument(format: .csv, tables: [try CSVReader.read(data)])
+    }
+
+    /// PDF-выписка известного банка → таблица единого вида.
+    static func readPDF(_ data: Data) throws -> ImportTable {
+        #if canImport(PDFKit)
+        let pages = try PDFTextExtractor.pages(from: data)
+        guard let table = PDFStatementReader.table(from: pages) else { throw ImportError.unsupportedPDF }
+        return table
+        #else
+        throw ImportError.unsupportedFormat
+        #endif
     }
 }
 
@@ -27,6 +41,10 @@ public struct ImportCandidate: Identifiable, Equatable, Sendable {
         case alreadyImported
         /// Похожа на существующую операцию (вероятно, внесённую вручную или голосом).
         case possible(existingID: UUID)
+        /// Та же операция уже загружена из другой выписки (Payme и выписка банка по той же карте) — будет пропущена.
+        /// `replaceable`: найденная операция — обычный расход или доход; если строка окажется частью перевода
+        /// между своими счетами, перевод заменит её.
+        case importedElsewhere(existingID: UUID, replaceable: Bool)
     }
 
     /// Перевод между своими счетами, собранный из пары строк выписки: списание + зачисление.
@@ -69,8 +87,24 @@ public struct ImportCandidate: Identifiable, Equatable, Sendable {
     /// Зачисление, вошедшее в перевод: показывается и записывается вместе со списанием.
     public var mergedInto: UUID? = nil
 
-    public var isTransfer: Bool { ownTransfer != nil }
+    /// Перевод со своим вкладом (или на вклад): счёт вклада выбран при импорте.
+    public var depositAccountID: UUID? = nil
+
+    public var isTransfer: Bool { ownTransfer != nil || depositAccountID != nil }
     public var isVisible: Bool { mergedInto == nil }
+
+    /// Откуда и куда идёт перевод.
+    public var transferRoute: (from: UUID, to: UUID)? {
+        if let ownTransfer { return (accountID, ownTransfer.destinationAccountID) }
+        if let depositAccountID { return direction == .outflow ? (accountID, depositAccountID) : (depositAccountID, accountID) }
+        return nil
+    }
+
+    /// Найденная операция из другой выписки, которую заменит перевод.
+    public var replaceableExistingID: UUID? {
+        if case .importedElsewhere(let id, true) = duplicate { return id }
+        return nil
+    }
 }
 
 public struct SkippedRow: Equatable, Sendable {
@@ -97,6 +131,13 @@ public struct ImportPreview: Equatable, Sendable {
     public var visibleCandidates: [ImportCandidate] { candidates.filter(\.isVisible) }
     public var includedCount: Int { candidates.filter { $0.isVisible && $0.include }.count }
     public var duplicateCount: Int { candidates.filter { $0.isVisible && $0.duplicate != .none }.count }
+    /// Строки, которые уже есть из другой выписки (и не превращаются в перевод).
+    public var elsewhereCount: Int {
+        candidates.filter { candidate in
+            guard candidate.isVisible, case .importedElsewhere = candidate.duplicate else { return false }
+            return !(candidate.include && candidate.isTransfer)
+        }.count
+    }
     /// Переводы между своими счетами — не расходы и не доходы.
     public var transferCount: Int { candidates.filter { $0.include && $0.isTransfer }.count }
 
@@ -114,10 +155,30 @@ public struct ImportPreview: Equatable, Sendable {
         return Money.sum(items.map(\.amount), currency: currency)
     }
 
-    /// «Это не перевод»: возвращает пару обратно в отдельные списание и зачисление.
+    /// Операции из других выписок, которые заменят отмеченные переводы.
+    public var replacedCount: Int { replacedTransactionIDs.count }
+
+    /// Операции из других выписок, которые заменят отмеченные переводы (удаляются при записи).
+    public var replacedTransactionIDs: [UUID] {
+        let byID = Dictionary(candidates.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var ids: [UUID] = []
+        for candidate in candidates where candidate.include && candidate.isVisible && candidate.isTransfer {
+            if let id = candidate.replaceableExistingID { ids.append(id) }
+            if let inflowID = candidate.ownTransfer?.inflowID, let id = byID[inflowID]?.replaceableExistingID { ids.append(id) }
+        }
+        return ids
+    }
+
+    /// «Это не перевод»: возвращает пару обратно в отдельные списание и зачисление (или убирает связь со вкладом).
     public mutating func splitTransfer(_ id: UUID) {
-        guard let index = candidates.firstIndex(where: { $0.id == id }), let transfer = candidates[index].ownTransfer else { return }
+        guard let index = candidates.firstIndex(where: { $0.id == id }) else { return }
+        if candidates[index].depositAccountID != nil {
+            candidates[index].depositAccountID = nil
+            return
+        }
+        guard let transfer = candidates[index].ownTransfer else { return }
         candidates[index].ownTransfer = nil
+        candidates[index].include = candidates[index].duplicate == .none
         if let inflow = candidates.firstIndex(where: { $0.id == transfer.inflowID }) {
             candidates[inflow].mergedInto = nil
             candidates[inflow].include = candidates[inflow].duplicate == .none
@@ -133,6 +194,8 @@ public struct ImportPipeline: Sendable {
     public let cardAccounts: [String: Account]
     public let existing: [FinanceTransaction]
     public let existingFingerprints: Set<String>
+    /// Счёт вклада: строки «Перевод с DEPOSIT на VISA» становятся переводами с ним, а не доходами.
+    public let depositAccount: Account?
     public let categorizer: CategorizationEngine
     public let calendar: Calendar
 
@@ -143,9 +206,13 @@ public struct ImportPipeline: Sendable {
     /// Комиссия за перевод — не больше 2% суммы списания (1/50).
     static let maxFeeDivisor: Int64 = 50
 
+    /// Операция из другой выписки — не дальше трёх дней (банк проводит операцию на 1–3 дня позже).
+    static let crossStatementDays = 3
+
     public init(account: Account, cardAccounts: [String: Account] = [:], existing: [FinanceTransaction],
-                existingFingerprints: Set<String>, categorizer: CategorizationEngine, calendar: Calendar) {
+                existingFingerprints: Set<String>, depositAccount: Account? = nil, categorizer: CategorizationEngine, calendar: Calendar) {
         self.account = account
+        self.depositAccount = depositAccount
         self.cardAccounts = cardAccounts
         self.existing = existing
         // Перевод хранит отпечатки обеих строк — повторный импорт узнаёт каждую из них.
@@ -256,6 +323,12 @@ public struct ImportPipeline: Sendable {
                 duplicate = .possible(existingID: match)
             }
 
+            var depositAccountID: UUID?
+            if let depositAccount, depositAccount.id != rowAccount.id, depositAccount.currency == rowAccount.currency,
+               kind == .expense || kind == .income, Self.isDepositTransfer(descriptionText) {
+                depositAccountID = depositAccount.id
+            }
+
             candidates.append(ImportCandidate(
                 id: UUID(),
                 rowIndex: rowIndex,
@@ -273,10 +346,12 @@ public struct ImportPipeline: Sendable {
                 possibleOwnTransferID: possibleOwnTransfer(account: rowAccount, amount: money, direction: direction, date: date),
                 card: card,
                 counterpartCard: mapping.column(.details) != nil ? CardKey(cell(.details).text) : nil,
-                statementCategory: statementCategory.isEmpty ? nil : statementCategory
+                statementCategory: statementCategory.isEmpty ? nil : statementCategory,
+                depositAccountID: depositAccountID
             ))
         }
         guard !candidates.isEmpty else { throw ImportError.noDataRows }
+        Self.matchOtherStatements(&candidates, existing: existing, calendar: calendar)
         Self.pairOwnTransfers(&candidates)
         return ImportPreview(candidates: candidates, skipped: skipped)
     }
@@ -335,11 +410,15 @@ public struct ImportPipeline: Sendable {
     /// Сначала пары, подтверждённые реквизитами (карта получателя / отправителя), затем — строки, похожие на перевод
     /// по категории или описанию. Из нескольких подходящих выбирается ближайшая по времени.
     static func pairOwnTransfers(_ candidates: inout [ImportCandidate]) {
+        // Строка из другой выписки (обычный расход или доход) тоже может оказаться половиной перевода — тогда перевод её заменит.
+        let pairable = { (candidate: ImportCandidate) -> Bool in
+            candidate.depositAccountID == nil && (candidate.duplicate == .none || candidate.replaceableExistingID != nil)
+        }
         let outflows = candidates.indices.filter {
-            candidates[$0].direction == .outflow && candidates[$0].kind != .fee && candidates[$0].duplicate == .none
+            candidates[$0].direction == .outflow && candidates[$0].kind != .fee && pairable(candidates[$0])
         }
         let inflows = candidates.indices.filter {
-            candidates[$0].direction == .inflow && candidates[$0].kind != .refund && candidates[$0].duplicate == .none
+            candidates[$0].direction == .inflow && candidates[$0].kind != .refund && pairable(candidates[$0])
         }.sorted { candidates[$0].date < candidates[$1].date }
         guard !outflows.isEmpty, !inflows.isEmpty else { return }
         let inflowDates = inflows.map { candidates[$0].date }
@@ -364,6 +443,8 @@ public struct ImportPipeline: Sendable {
                     guard !used.contains(inflowIndex) else { continue }
                     let target = candidates[inflowIndex]
                     guard target.accountID != source.accountID, target.amount.currency == source.amount.currency else { continue }
+                    // Обе половины уже есть из других выписок и ничего не добавляют — пару не собираем.
+                    if source.duplicate != .none && target.duplicate != .none && !confirmed { continue }
                     let fee = source.amount.minorUnits - target.amount.minorUnits
                     guard fee >= 0, fee * maxFeeDivisor <= source.amount.minorUnits else { continue }
                     if confirmed {
@@ -385,9 +466,103 @@ public struct ImportPipeline: Sendable {
                     confirmedByDetails: confirmed
                 )
                 candidates[outflowIndex].possibleOwnTransferID = nil
+                candidates[outflowIndex].include = true
                 candidates[best.index].mergedInto = source.id
                 candidates[best.index].possibleOwnTransferID = nil
                 used.insert(best.index)
+            }
+        }
+    }
+
+    // MARK: - Вклад
+
+    private static let depositWords = ["deposit", "депозит", "вклад", "omonat", "dep"]
+
+    /// «Перевод с DEPOSIT UZS на VISA», «DEP UZS 2 VISA» — перевод между картой и своим вкладом.
+    public static func isDepositTransfer(_ text: String) -> Bool {
+        let folded = TextNormalizer.fold(text)
+        let tokens = folded.split { !$0.isLetter && !$0.isNumber }.map(String.init)
+        guard tokens.contains(where: { token in depositWords.contains { token.hasPrefix($0) } }) else { return false }
+        let padded = " " + folded + " "
+        return transferWords.contains { padded.contains($0) }
+    }
+
+    // MARK: - Та же операция в другой выписке
+
+    /// Строки, которые уже загружены из другой выписки по тому же счёту: Payme и выписка банка по одной карте.
+    ///
+    /// Сравнение: тот же счёт, направление и сумма, даты не дальше трёх дней (банк проводит операцию позже, чем
+    /// она видна в Payme). Перевод из другой выписки сравнивается и сам по себе, и вместе со своей комиссией
+    /// (банк часто списывает их одной суммой). Каждая найденная операция используется один раз; из нескольких —
+    /// ближайшая по дате.
+    static func matchOtherStatements(_ candidates: inout [ImportCandidate], existing: [FinanceTransaction], calendar: Calendar) {
+        struct Leg {
+            var key: String
+            var id: UUID
+            var date: Date
+            var replaceable: Bool
+        }
+        // Операции, соответствующие строкам этого же файла, не трогаем — иначе соседние повторяющиеся суммы
+        // (ежедневные проценты) ошибочно совпали бы с ними.
+        let ownFingerprints = Set(candidates.filter { $0.duplicate == .alreadyImported }.map(\.fingerprint))
+        var fees: [UUID: Int64] = [:]
+        for transaction in existing where transaction.kind == .fee {
+            if let link = transaction.linkedTransactionID { fees[link, default: 0] += transaction.amount.minorUnits }
+        }
+        var legs: [String: [Leg]] = [:]
+        func add(_ account: UUID, outflow: Bool, _ money: Money, _ leg: Leg) {
+            legs["\(account)|\(outflow)|\(money.currency.code)|\(money.minorUnits)", default: []].append(leg)
+        }
+        for transaction in existing where transaction.source == .importFile {
+            guard let fingerprint = transaction.importFingerprint else { continue }
+            if fingerprint.components(separatedBy: pairSeparator).contains(where: ownFingerprints.contains) { continue }
+            let id = transaction.id
+            switch transaction.kind {
+            case .expense, .fee:
+                add(transaction.accountID, outflow: true, transaction.amount, Leg(key: "\(id)", id: id, date: transaction.date, replaceable: transaction.kind == .expense))
+            case .income, .refund:
+                add(transaction.accountID, outflow: false, transaction.amount, Leg(key: "\(id)", id: id, date: transaction.date, replaceable: transaction.kind == .income))
+            case .transfer:
+                let out = Leg(key: "\(id)-out", id: id, date: transaction.date, replaceable: false)
+                add(transaction.accountID, outflow: true, transaction.amount, out)
+                if let fee = fees[id] {
+                    add(transaction.accountID, outflow: true, Money(minorUnits: transaction.amount.minorUnits + fee, currency: transaction.amount.currency), out)
+                }
+                if let counter = transaction.counterAccountID {
+                    add(counter, outflow: false, transaction.counterAmount ?? transaction.amount,
+                        Leg(key: "\(id)-in", id: id, date: transaction.date, replaceable: false))
+                }
+            case .adjustment:
+                continue
+            }
+        }
+        guard !legs.isEmpty else { return }
+
+        var options: [(candidate: Int, leg: Leg, days: Int, seconds: TimeInterval)] = []
+        for index in candidates.indices where candidates[index].duplicate == .none {
+            let candidate = candidates[index]
+            let key = "\(candidate.accountID)|\(candidate.direction == .outflow)|\(candidate.amount.currency.code)|\(candidate.amount.minorUnits)"
+            guard let matches = legs[key] else { continue }
+            let day = calendar.startOfDay(for: candidate.date)
+            for leg in matches {
+                let days = abs(calendar.dateComponents([.day], from: calendar.startOfDay(for: leg.date), to: day).day ?? .max)
+                guard days <= crossStatementDays else { continue }
+                options.append((index, leg, days, abs(leg.date.timeIntervalSince(candidate.date))))
+            }
+        }
+        options.sort { ($0.days, $0.seconds) < ($1.days, $1.seconds) }
+        var usedCandidates = Set<Int>()
+        var usedLegs = Set<String>()
+        for option in options where !usedCandidates.contains(option.candidate) && !usedLegs.contains(option.leg.key) {
+            usedCandidates.insert(option.candidate)
+            usedLegs.insert(option.leg.key)
+            candidates[option.candidate].duplicate = .importedElsewhere(existingID: option.leg.id, replaceable: option.leg.replaceable)
+            // Перевод со вкладом заменяет такой же доход или расход из другой выписки («DEP UZS 2 VISA» в Payme).
+            if candidates[option.candidate].depositAccountID != nil && option.leg.replaceable {
+                candidates[option.candidate].include = true
+            } else {
+                candidates[option.candidate].include = false
+                candidates[option.candidate].depositAccountID = nil
             }
         }
     }
@@ -430,6 +605,21 @@ public struct ImportPipeline: Sendable {
                         linkedTransactionID: transferID
                     ))
                 }
+                continue
+            }
+            if candidate.depositAccountID != nil, let route = candidate.transferRoute {
+                result.append(FinanceTransaction(
+                    kind: .transfer,
+                    amount: candidate.amount,
+                    accountID: route.from,
+                    counterAccountID: route.to,
+                    counterAmount: candidate.amount,
+                    note: candidate.description.isEmpty ? nil : candidate.description,
+                    date: candidate.date,
+                    createdAt: now,
+                    source: .importFile,
+                    importFingerprint: candidate.fingerprint
+                ))
                 continue
             }
             result.append(FinanceTransaction(

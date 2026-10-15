@@ -4,7 +4,8 @@ import MonoCore
 /// Адаптер формата выписки конкретного банка.
 ///
 /// Специализированные адаптеры добавляются только по реальным образцам выписок: без образца формат считается
-/// непроверенным и приложение не заявляет его поддержку. Сейчас проверен формат Payme (все карты в одном файле).
+/// непроверенным и приложение не заявляет его поддержку. Сейчас проверены Payme (все карты в одном файле, XLSX)
+/// и PDF-выписки Kapitalbank и Uzum Bank (`PDFStatementReader`).
 /// Для выписок банков используется универсальный разбор + сохранённые профили сопоставления
 /// (после первого ручного сопоставления файл того же формата импортируется автоматически).
 public protocol StatementAdapter: Sendable {
@@ -37,7 +38,12 @@ public struct GenericStatementAdapter: StatementAdapter {
 
 public enum StatementAdapterRegistry {
     /// Порядок важен: специализированные адаптеры раньше универсального.
-    public static let adapters: [any StatementAdapter] = [PaymeStatementAdapter(), GenericStatementAdapter()]
+    public static let adapters: [any StatementAdapter] = {
+        var list: [any StatementAdapter] = [PaymeStatementAdapter()]
+        for parser in PDFStatementReader.parsers { list.append(BankPDFStatementAdapter(parser: parser)) }
+        list.append(GenericStatementAdapter())
+        return list
+    }()
 
     public static func adapter(for table: ImportTable) -> any StatementAdapter {
         adapters.first { $0.matches(table) } ?? GenericStatementAdapter()
