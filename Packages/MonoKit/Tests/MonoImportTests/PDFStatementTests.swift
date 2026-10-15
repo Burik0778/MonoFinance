@@ -197,7 +197,7 @@ final class PDFStatementTests: XCTestCase {
         let table = try XCTUnwrap(document.tables.first)
         XCTAssertEqual(table.rows.count, 61, debugWords("kapitalbank_statement.pdf"))
         let amounts = table.rows.dropFirst().compactMap { ValueParsers.amount($0[2]) }
-        XCTAssertEqual(amounts.filter { $0 > 0 }.reduce(0, +), Decimal(string: "7565406.12"))
+        XCTAssertEqual(amounts.filter { $0 > 0 }.reduce(0, +), Decimal(string: "7565406.12"), debugRows(table) + "\n" + debugWords(pages))
         XCTAssertEqual(amounts.filter { $0 < 0 }.reduce(0, +), -13_342_440)
         XCTAssertEqual(table.rows[2][3].text, "IP OOO DEMO FOOD")
         XCTAssertEqual(table.rows[2][0].text, "02.03.2026")
@@ -211,10 +211,14 @@ final class PDFStatementTests: XCTestCase {
         let table = try XCTUnwrap(document.tables.first)
         XCTAssertEqual(table.rows.count, 41, debugWords("uzum_statement.pdf"))
         let amounts = table.rows.dropFirst().compactMap { ValueParsers.amount($0[2]) }
-        XCTAssertEqual(amounts.filter { $0 > 0 }.reduce(0, +), 10_880_410)
+        XCTAssertEqual(amounts.filter { $0 > 0 }.reduce(0, +), 10_880_410, debugRows(table))
         XCTAssertEqual(amounts.filter { $0 < 0 }.reduce(0, +), -689_490)
         XCTAssertEqual(table.rows[1][0].text, "01.03.2026")
         XCTAssertEqual(table.rows[1][1].text, "10:00:00")
+    }
+
+    func debugRows(_ table: ImportTable) -> String {
+        table.rows.prefix(16).map { row in row.prefix(5).map(\.text).joined(separator: " | ") }.joined(separator: "\n")
     }
 
     /// Строки первой страницы — для разбора падения в CI.
