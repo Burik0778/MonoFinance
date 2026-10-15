@@ -14,6 +14,10 @@ public enum ColumnDetector {
         (.merchant, ["мерчант", "merchant", "получатель", "контрагент", "торговая точка", "магазин", "payee", "recipient", "qabul qiluvchi", "место"]),
         (.description, ["описание", "назначение", "детали", "комментарий", "description", "details", "narrative", "memo", "tavsif", "izoh", "наименование", "операция", "operation"]),
         (.category, ["категория", "category", "kategoriya"]),
+        (.card, ["номер карты", "card number", "karta raqami", "номер счета", "account number", "hisob raqami"]),
+        (.cardName, ["название карты", "card name", "karta nomi"]),
+        (.status, ["состояние", "статус", "status", "holati"]),
+        (.details, ["реквизиты", "requisites", "rekvizit"]),
         (.balance, ["остаток", "баланс", "balance", "qoldiq"])
     ]
 

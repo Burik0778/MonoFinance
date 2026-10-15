@@ -102,6 +102,14 @@ public enum ColumnRole: String, Codable, Sendable, CaseIterable, Identifiable {
     case description
     case merchant
     case category
+    /// Номер карты или счёта: в выписке сразу по нескольким картам (Payme) строки распределяются по счетам.
+    case card
+    /// Название карты (подпись в приложении-агрегаторе).
+    case cardName
+    /// Состояние платежа: отменённые и незавершённые строки пропускаются.
+    case status
+    /// Реквизиты: карта получателя / отправителя — признак перевода между своими картами.
+    case details
     case balance
     case ignore
 
@@ -119,6 +127,10 @@ public enum ColumnRole: String, Codable, Sendable, CaseIterable, Identifiable {
         case .description: return Phrase(ru: "Описание", uz: "Tavsif", en: "Description")
         case .merchant: return Phrase(ru: "Получатель / магазин", uz: "Qabul qiluvchi", en: "Merchant")
         case .category: return Phrase(ru: "Категория", uz: "Kategoriya", en: "Category")
+        case .card: return Phrase(ru: "Номер карты", uz: "Karta raqami", en: "Card number")
+        case .cardName: return Phrase(ru: "Название карты", uz: "Karta nomi", en: "Card name")
+        case .status: return Phrase(ru: "Статус платежа", uz: "To‘lov holati", en: "Status")
+        case .details: return Phrase(ru: "Реквизиты", uz: "Rekvizitlar", en: "Details")
         case .balance: return Phrase(ru: "Остаток (не импортируется)", uz: "Qoldiq", en: "Balance (ignored)")
         case .ignore: return Phrase(ru: "Не использовать", uz: "Ishlatilmasin", en: "Ignore")
         }
@@ -164,12 +176,15 @@ public struct ImportProfile: Codable, Equatable, Sendable {
     public var name: String
     public var mapping: ColumnMapping
     public var accountID: UUID?
+    /// Карта из выписки → счёт в приложении (для выписок сразу по нескольким картам).
+    public var cardAccounts: [String: UUID]?
 
-    public init(signature: String, name: String, mapping: ColumnMapping, accountID: UUID?) {
+    public init(signature: String, name: String, mapping: ColumnMapping, accountID: UUID?, cardAccounts: [String: UUID]? = nil) {
         self.signature = signature
         self.name = name
         self.mapping = mapping
         self.accountID = accountID
+        self.cardAccounts = cardAccounts
     }
 
     public func encodedPayload() -> String {

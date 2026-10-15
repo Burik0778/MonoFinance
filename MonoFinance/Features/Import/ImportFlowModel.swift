@@ -25,6 +25,11 @@ final class ImportFlowModel {
     var tableIndex = 0
     var mapping = ColumnMapping(headerRow: nil, roles: [:])
     private(set) var appliedProfileName: String?
+    /// Распознанный формат выписки («Payme»).
+    private(set) var formatName: String?
+    /// Карты в выписке сразу по нескольким картам и выбранные для них счета (нет записи — карта не импортируется).
+    private(set) var cards: [StatementCard] = []
+    var cardAccounts: [String: UUID] = [:]
     var preview: ImportPreview?
     var rememberMapping = true
     private(set) var isWorking = false
@@ -73,19 +78,65 @@ final class ImportFlowModel {
         prepareMapping(store: store)
     }
 
-    /// Автоопределение колонок; если такие заголовки уже встречались — применяем сохранённый профиль.
+    /// Автоопределение колонок (известный формат — по адаптеру); если такие заголовки уже встречались — применяем сохранённый профиль.
     private func prepareMapping(store: FinanceStore) {
         guard let table else { return }
-        let suggested = ColumnDetector.suggestMapping(for: table, calendar: store.periods.calendar)
+        let adapter = StatementAdapterRegistry.adapter(for: table)
+        let suggested = adapter.mapping(for: table, calendar: store.periods.calendar)
         mapping = suggested
+        formatName = adapter.displayName
         appliedProfileName = nil
+        cardAccounts = [:]
+        var savedCards: [String: UUID] = [:]
         let signature = ColumnDetector.signature(for: table, mapping: suggested)
         if let stored = store.importProfiles().first(where: { $0.signature == signature }),
            let profile = ImportProfile.decode(payload: stored.payload) {
             mapping = profile.mapping
             appliedProfileName = stored.name
             if accountID == nil, let saved = profile.accountID, store.accountMap[saved] != nil { accountID = saved }
+            savedCards = profile.cardAccounts ?? [:]
         }
+        refreshCards(store: store, saved: savedCards)
+    }
+
+    /// Карты из колонки «Номер карты» и счета для них: сохранённые → по последним цифрам или банку → единственная карта на выбранный счёт.
+    private func refreshCards(store: FinanceStore, saved: [String: UUID] = [:]) {
+        guard let table else { return }
+        cards = StatementCard.cards(in: table, mapping: mapping)
+        var assignments: [String: UUID] = [:]
+        for card in cards {
+            if let id = cardAccounts[card.id] ?? saved[card.id], store.accountMap[id]?.isArchived == false {
+                assignments[card.id] = id
+            } else if let suggested = card.suggestedAccount(in: store.activeAccounts) {
+                assignments[card.id] = suggested.id
+            }
+        }
+        if cards.count == 1, assignments.isEmpty, let accountID { assignments[cards[0].id] = accountID }
+        cardAccounts = assignments
+    }
+
+    func assign(_ accountID: UUID?, to card: StatementCard) {
+        cardAccounts[card.id] = accountID
+        preview = nil
+    }
+
+    /// Выписка по нескольким картам: строки распределяются по счетам.
+    var isMultiCard: Bool { !cards.isEmpty }
+
+    private func pipeline(store: FinanceStore, fingerprints: Set<String>) -> ImportPipeline? {
+        let accounts = cardAccounts.compactMapValues { store.accountMap[$0] }
+        if isMultiCard {
+            guard let first = cards.compactMap({ accounts[$0.id] }).first else { return nil }
+            return ImportPipeline(account: first, cardAccounts: accounts, existing: store.transactions, existingFingerprints: fingerprints,
+                                  categorizer: store.categorizer(), calendar: store.periods.calendar)
+        }
+        guard let accountID, let account = store.accountMap[accountID] else { return nil }
+        return ImportPipeline(account: account, existing: store.transactions, existingFingerprints: fingerprints,
+                              categorizer: store.categorizer(), calendar: store.periods.calendar)
+    }
+
+    var canBuildPreview: Bool {
+        mapping.isComplete && (isMultiCard ? !cardAccounts.isEmpty : accountID != nil)
     }
 
     // MARK: - Сопоставление
@@ -105,9 +156,15 @@ final class ImportFlowModel {
         preview = nil
     }
 
-    func setHeaderRow(_ row: Int?) {
+    func setRole(_ role: ColumnRole?, for column: Int, store: FinanceStore) {
+        setRole(role, for: column)
+        refreshCards(store: store)
+    }
+
+    func setHeaderRow(_ row: Int?, store: FinanceStore) {
         mapping.headerRow = row
         preview = nil
+        refreshCards(store: store)
     }
 
     // MARK: - Предпросмотр
@@ -115,14 +172,12 @@ final class ImportFlowModel {
     func buildPreview(store: FinanceStore) {
         error = nil
         guard let table else { return }
-        guard let accountID, let account = store.accountMap[accountID] else {
-            error = String(localized: "Выберите счёт, к которому относится выписка.")
+        let fingerprints = (try? store.database.existingFingerprints()) ?? []
+        guard let pipeline = pipeline(store: store, fingerprints: fingerprints) else {
+            error = isMultiCard ? String(localized: "Выберите счёт хотя бы для одной карты.") : String(localized: "Выберите счёт, к которому относится выписка.")
             return
         }
         do {
-            let fingerprints = (try? store.database.existingFingerprints()) ?? []
-            let pipeline = ImportPipeline(account: account, existing: store.transactions, existingFingerprints: fingerprints,
-                                          categorizer: store.categorizer(), calendar: store.periods.calendar)
             preview = try pipeline.preview(table: table, mapping: mapping)
             step = .preview
         } catch {
@@ -143,6 +198,13 @@ final class ImportFlowModel {
         self.preview = preview
     }
 
+    /// «Это не перевод» — пара снова становится отдельными списанием и зачислением.
+    func splitTransfer(_ candidate: ImportCandidate) {
+        guard var preview else { return }
+        preview.splitTransfer(candidate.id)
+        self.preview = preview
+    }
+
     func setAll(included: Bool) {
         guard var preview else { return }
         for index in preview.candidates.indices where preview.candidates[index].duplicate == ImportCandidate.DuplicateStatus.none {
@@ -154,10 +216,9 @@ final class ImportFlowModel {
     // MARK: - Запись
 
     func commit(store: FinanceStore) {
-        guard let preview, let table, let accountID, let account = store.accountMap[accountID] else { return }
+        guard let preview, let table, let pipeline = pipeline(store: store, fingerprints: []) else { return }
         error = nil
-        let pipeline = ImportPipeline(account: account, existing: store.transactions, existingFingerprints: [],
-                                      categorizer: store.categorizer(), calendar: store.periods.calendar)
+        let account = pipeline.account
         let transactions = pipeline.transactions(from: preview.candidates)
         guard !transactions.isEmpty else {
             error = String(localized: "Не выбрано ни одной операции.")
@@ -167,12 +228,13 @@ final class ImportFlowModel {
             result = try store.importTransactions(transactions)
             if rememberMapping {
                 let signature = ColumnDetector.signature(for: table, mapping: mapping)
-                let profile = ImportProfile(signature: signature, name: profileName(account: account), mapping: mapping, accountID: accountID)
+                let profile = ImportProfile(signature: signature, name: profileName(account: account), mapping: mapping,
+                                            accountID: isMultiCard ? nil : accountID, cardAccounts: isMultiCard ? cardAccounts : nil)
                 store.saveImportProfile(StoredImportProfile(signature: signature, name: profile.name, payload: profile.encodedPayload()))
             }
             // Исправленные категории — в обучение.
             let categorizer = store.categorizer()
-            for candidate in preview.candidates where candidate.include {
+            for candidate in preview.candidates where candidate.include && candidate.isVisible && !candidate.isTransfer {
                 if let merchant = candidate.merchant, let categoryID = candidate.categoryID {
                     let suggested = categorizer.suggest(merchant: merchant, text: candidate.description, kind: candidate.kind)?.categoryID
                     if suggested != categoryID { store.learnCategory(merchant: merchant, categoryID: categoryID) }
@@ -185,6 +247,6 @@ final class ImportFlowModel {
     }
 
     private func profileName(account: Account) -> String {
-        "\(account.bank.displayName) · \(fileName ?? "")"
+        "\(formatName ?? account.bank.displayName) · \(fileName ?? "")"
     }
 }

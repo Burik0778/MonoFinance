@@ -85,7 +85,7 @@ struct ImportFlowView: View {
                         .foregroundStyle(Color.mono.textSecondary)
                 }
 
-                FormSection(title: "Счёт выписки", footer: "Все операции из файла будут привязаны к этому счёту в его валюте. Строки в другой валюте пропускаются.") {
+                FormSection(title: "Счёт выписки", footer: "Все операции из файла будут привязаны к этому счёту в его валюте. Если в выписке несколько карт (Payme), счёт для каждой карты выберете на следующем шаге.") {
                     AccountPickerMenu(accounts: store.activeAccounts, selection: $model.accountID)
                 }
 
@@ -127,6 +127,7 @@ struct ImportFlowView: View {
                     Kicker("Важно знать")
                     note("checkmark.shield", "Повторный импорт того же файла не создаст дублей: уже загруженные строки распознаются и пропускаются.")
                     note("hand.raised", "Операции, похожие на внесённые вручную или голосом, по умолчанию не отмечены — решаете вы.")
+                    note("arrow.left.arrow.right", "Выписка Payme со всеми картами распознаётся сама. Переводы между своими картами становятся переводами, а не расходами; комиссия записывается отдельно.")
                     note("questionmark.diamond", "Готовых шаблонов для выписок Kapitalbank, Uzum, Orient Finans и Trastbank пока нет: их форматы не проверены на реальных файлах. Колонки определяются автоматически, проверьте их на следующем шаге.")
                     note("xmark.bin", "Старый формат Excel 97–2003 (.xls) не поддерживается — сохраните файл как XLSX или CSV.")
                 }
@@ -177,6 +178,11 @@ struct ImportFlowView: View {
                                 .lineLimit(1)
                         }
                     }
+                    if let format = model.formatName {
+                        Label { Text("Распознан формат выписки \(format)") } icon: { Image(systemName: "checkmark.seal.fill") }
+                            .monoFont(.footnote)
+                            .foregroundStyle(Color.mono.positive)
+                    }
                     if let profile = model.appliedProfileName {
                         Label { Text("Применено сохранённое сопоставление «\(profile)»") } icon: { Image(systemName: "wand.and.stars") }
                             .monoFont(.footnote)
@@ -199,7 +205,7 @@ struct ImportFlowView: View {
                     }
 
                     FormSection(title: "Строка заголовков") {
-                        Stepper(value: Binding(get: { (model.mapping.headerRow ?? -1) + 1 }, set: { model.setHeaderRow($0 == 0 ? nil : $0 - 1) }),
+                        Stepper(value: Binding(get: { (model.mapping.headerRow ?? -1) + 1 }, set: { model.setHeaderRow($0 == 0 ? nil : $0 - 1, store: store) }),
                                 in: 0...max(0, min(30, (model.table?.rows.count ?? 1) - 1))) {
                             Text(verbatim: model.mapping.headerRow.map { Phrase(ru: "Строка \($0 + 1)", uz: "\($0 + 1)-qator", en: "Row \($0 + 1)")(language) }
                                  ?? Phrase(ru: "Без заголовка", uz: "Sarlavhasiz", en: "No header")(language))
@@ -214,7 +220,7 @@ struct ImportFlowView: View {
                     FormSection(title: "Что в колонках", footer: "Нажмите на заголовок колонки, чтобы изменить её роль. Нужны как минимум дата и сумма (или списание / зачисление).") {
                         if let table = model.table {
                             MappingGrid(table: table, mapping: model.mapping) { column, role in
-                                model.setRole(role, for: column)
+                                model.setRole(role, for: column, store: store)
                             }
                         }
                     }
@@ -228,8 +234,20 @@ struct ImportFlowView: View {
                         }
                     }
 
-                    FormSection(title: "Счёт") {
-                        AccountPickerMenu(accounts: store.activeAccounts, selection: $model.accountID)
+                    if model.isMultiCard {
+                        FormSection(title: "Карты в выписке", footer: "Выберите счёт для каждой карты. Карты без счёта не импортируются.") {
+                            VStack(spacing: 8) {
+                                ForEach(model.cards) { card in
+                                    StatementCardRow(card: card, accountID: model.cardAccounts[card.id], accounts: store.activeAccounts) {
+                                        model.assign($0, to: card)
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        FormSection(title: "Счёт") {
+                            AccountPickerMenu(accounts: store.activeAccounts, selection: $model.accountID)
+                        }
                     }
 
                     ToggleRow(title: "Запомнить сопоставление", subtitle: "В следующий раз файл с такими же колонками разберётся сам.", isOn: $model.rememberMapping)
@@ -242,7 +260,7 @@ struct ImportFlowView: View {
 
             Button("Показать операции") { model.buildPreview(store: store) }
                 .buttonStyle(PrimaryButtonStyle())
-                .disabled(!model.mapping.isComplete || model.accountID == nil)
+                .disabled(!model.canBuildPreview)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
         }
@@ -260,9 +278,10 @@ struct ImportFlowView: View {
                             .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 8, trailing: 0))
                     }
                     Section {
-                        ForEach(preview.candidates) { candidate in
-                            CandidateRow(candidate: candidate, onToggle: { model.toggle(candidate) },
-                                         onCategory: { model.setCategory($0, for: candidate) })
+                        ForEach(preview.visibleCandidates) { candidate in
+                            CandidateRow(candidate: candidate, showsAccount: model.isMultiCard, onToggle: { model.toggle(candidate) },
+                                         onCategory: { model.setCategory($0, for: candidate) },
+                                         onSplit: { model.splitTransfer(candidate) })
                                 .listRowBackground(Color.mono.surface1)
                         }
                     } header: {
@@ -293,7 +312,7 @@ struct ImportFlowView: View {
                         model.commit(store: store)
                         if model.step == .done { Haptics.success() }
                     } label: {
-                        Text("Импортировать: \(preview.candidates.filter { $0.include && $0.duplicate != .alreadyImported }.count)")
+                        Text("Импортировать: \(preview.visibleCandidates.filter { $0.include && $0.duplicate != .alreadyImported }.count)")
                     }
                     .buttonStyle(PrimaryButtonStyle())
                     .disabled(preview.includedCount == 0)
@@ -454,6 +473,8 @@ private struct MappingGrid: View {
         case .direction, .currency: return Color.mono.textSecondary
         case .description, .merchant: return Color.mono.accent
         case .category: return Color.mono.accent
+        case .card, .cardName, .details: return Color.mono.accent
+        case .status: return Color.mono.textSecondary
         case .balance, .ignore: return Color.mono.neutral
         }
     }
@@ -488,6 +509,21 @@ private struct PreviewSummary: View {
                     }
                 }
             }
+            if preview.transferCount > 0 {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label { Text("Переводов между своими счетами: \(preview.transferCount). Это не расходы и не доходы.") } icon: { Image(systemName: "arrow.left.arrow.right") }
+                        .monoFont(.footnote)
+                        .foregroundStyle(Color.mono.textPrimary)
+                    if let fees = preview.feeTotal {
+                        HStack(spacing: 4) {
+                            Text("Комиссии за переводы:")
+                            MoneyText(money: fees, token: .footnote, color: Color.mono.textSecondary)
+                        }
+                        .monoFont(.footnote)
+                        .foregroundStyle(Color.mono.textSecondary)
+                    }
+                }
+            }
             if preview.duplicateCount > 0 {
                 Label { Text("Похожих или уже загруженных строк: \(preview.duplicateCount). Они не отмечены.") } icon: { Image(systemName: "square.on.square") }
                     .monoFont(.footnote)
@@ -501,8 +537,10 @@ private struct PreviewSummary: View {
 
 private struct CandidateRow: View {
     let candidate: ImportCandidate
+    var showsAccount = false
     let onToggle: () -> Void
     let onCategory: (UUID?) -> Void
+    var onSplit: () -> Void = {}
 
     @Environment(FinanceStore.self) private var store
     @Environment(\.appLanguage) private var language
@@ -522,16 +560,23 @@ private struct CandidateRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(verbatim: candidate.merchant ?? (candidate.description.isEmpty ? candidate.kind.title(language) : candidate.description))
+                    Text(verbatim: title)
                         .monoFont(.body)
                         .foregroundStyle(locked ? Color.mono.textTertiary : Color.mono.textPrimary)
                         .lineLimit(1)
                     Spacer(minLength: 8)
-                    MoneyText(money: candidate.direction == .outflow ? candidate.amount.negated : candidate.amount, token: .amountRow,
-                              color: candidate.direction == .inflow ? Color.mono.positive : Color.mono.textPrimary)
+                    if let transfer = candidate.ownTransfer {
+                        MoneyText(money: transfer.received, token: .amountRow, color: Color.mono.textSecondary)
+                    } else {
+                        MoneyText(money: candidate.direction == .outflow ? candidate.amount.negated : candidate.amount, token: .amountRow,
+                                  color: candidate.direction == .inflow ? Color.mono.positive : Color.mono.textPrimary)
+                    }
                 }
                 HStack(spacing: 6) {
                     Text(verbatim: DateFormatting.short(candidate.date, calendar: store.periods.calendar, language: language))
+                    if showsAccount, candidate.ownTransfer == nil, let account = store.accountMap[candidate.accountID] {
+                        Text(verbatim: "· \(account.displayName)")
+                    }
                     if candidate.kind == .fee || candidate.kind == .refund {
                         Text(verbatim: "· \(candidate.kind.title(language))")
                     }
@@ -539,7 +584,24 @@ private struct CandidateRow: View {
                 .monoFont(.caption)
                 .foregroundStyle(Color.mono.textTertiary)
 
-                if candidate.kind.usesCategory {
+                if let transfer = candidate.ownTransfer {
+                    HStack(spacing: 8) {
+                        if let fee = transfer.fee {
+                            HStack(spacing: 3) {
+                                Text("Комиссия")
+                                MoneyText(money: fee, token: .caption, color: Color.mono.textTertiary)
+                            }
+                            .monoFont(.caption)
+                            .foregroundStyle(Color.mono.textTertiary)
+                        }
+                        Spacer(minLength: 0)
+                        Button("Это не перевод", action: onSplit)
+                            .monoFont(.caption)
+                            .foregroundStyle(Color.mono.textSecondary)
+                            .buttonStyle(.plain)
+                            .disabled(locked)
+                    }
+                } else if candidate.kind.usesCategory {
                     Menu {
                         Button("Без категории") { onCategory(nil) }
                         ForEach(store.categories(for: candidate.kind)) { option in
@@ -572,13 +634,23 @@ private struct CandidateRow: View {
                 case .none:
                     EmptyView()
                 }
-                if candidate.possibleOwnTransferID != nil {
+                if candidate.possibleOwnTransferID != nil && candidate.ownTransfer == nil {
                     tag("Похоже на перевод между своими счетами — проверьте, чтобы не учесть дважды", color: Color.mono.textSecondary)
                 }
             }
         }
         .padding(.vertical, 4)
         .opacity(locked ? 0.6 : 1)
+    }
+
+    /// «Перевод · Kapital → Orient» для пары, иначе продавец или описание.
+    private var title: String {
+        if let transfer = candidate.ownTransfer {
+            let from = store.accountMap[candidate.accountID]?.displayName ?? ""
+            let to = store.accountMap[transfer.destinationAccountID]?.displayName ?? ""
+            return "\(TransactionKind.transfer.title(language)) · \(from) → \(to)"
+        }
+        return candidate.merchant ?? (candidate.description.isEmpty ? candidate.kind.title(language) : candidate.description)
     }
 
     private func tag(_ text: LocalizedStringKey, color: Color) -> some View {
@@ -627,6 +699,71 @@ private struct SkippedSummary: View {
         case .noAmount: return Phrase(ru: "Нет суммы", uz: "Summa yo‘q", en: "No amount")(language)
         case .zeroAmount: return Phrase(ru: "Нулевая сумма", uz: "Nol summa", en: "Zero amount")(language)
         case .otherCurrency: return Phrase(ru: "Другая валюта", uz: "Boshqa valyuta", en: "Other currency")(language)
+        case .notCompleted: return Phrase(ru: "Отменённые или не проведённые", uz: "Bekor qilingan yoki o‘tkazilmagan", en: "Cancelled or pending")(language)
+        case .unassignedCard: return Phrase(ru: "Карта без выбранного счёта", uz: "Hisob tanlanmagan karta", en: "Card without an account")(language)
         }
+    }
+}
+
+// MARK: - Карты выписки
+
+/// Карта из выписки и счёт, к которому относятся её операции.
+private struct StatementCardRow: View {
+    let card: StatementCard
+    let accountID: UUID?
+    let accounts: [Account]
+    let onSelect: (UUID?) -> Void
+
+    @Environment(FinanceStore.self) private var store
+
+    var body: some View {
+        let account = accountID.flatMap { store.accountMap[$0] }
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: card.name ?? card.number)
+                    .monoFont(.headline)
+                    .foregroundStyle(Color.mono.textPrimary)
+                    .lineLimit(1)
+                Text(verbatim: "\(card.lastFour.map { "•• \($0)" } ?? card.number) · \(card.rowCount)")
+                    .monoFont(.caption, digits: true)
+                    .foregroundStyle(Color.mono.textTertiary)
+            }
+            Spacer(minLength: 8)
+            Menu {
+                ForEach(accounts) { option in
+                    Button {
+                        Haptics.selection()
+                        onSelect(option.id)
+                    } label: {
+                        if option.id == accountID {
+                            Label(option.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(verbatim: "\(option.displayName) · \(option.currency.code)")
+                        }
+                    }
+                }
+                Divider()
+                Button(role: .destructive) { onSelect(nil) } label: { Label("Не импортировать", systemImage: "xmark") }
+            } label: {
+                HStack(spacing: 8) {
+                    if let account {
+                        CardThumbnail(skin: account.skin, width: 30)
+                        Text(verbatim: account.displayName)
+                            .foregroundStyle(Color.mono.textPrimary)
+                    } else {
+                        Text("Выбрать счёт")
+                            .foregroundStyle(Color.mono.warning)
+                    }
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Color.mono.textTertiary)
+                }
+                .monoFont(.subhead)
+                .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, 14)
+        .frame(minHeight: 60)
+        .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.surface2))
     }
 }

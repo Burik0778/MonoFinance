@@ -3,15 +3,17 @@ import MonoCore
 
 /// Адаптер формата выписки конкретного банка.
 ///
-/// Сейчас зарегистрирован только универсальный адаптер. Адаптеры Kapitalbank, Uzum Bank, Orient Finans Bank
-/// и Trastbank добавляются по реальным образцам выписок: без образца формат считается непроверенным и
-/// приложение не заявляет его поддержку. До этого используется универсальный разбор + сохранённые профили
-/// сопоставления (после первого ручного сопоставления файл того же формата импортируется автоматически).
+/// Специализированные адаптеры добавляются только по реальным образцам выписок: без образца формат считается
+/// непроверенным и приложение не заявляет его поддержку. Сейчас проверен формат Payme (все карты в одном файле).
+/// Для выписок банков используется универсальный разбор + сохранённые профили сопоставления
+/// (после первого ручного сопоставления файл того же формата импортируется автоматически).
 public protocol StatementAdapter: Sendable {
     var id: String { get }
     var bank: Bank? { get }
     /// Проверен ли формат на реальном образце.
     var isVerified: Bool { get }
+    /// Название формата для интерфейса («Payme»); `nil` — универсальный разбор.
+    var displayName: String? { get }
     /// Подходит ли адаптер к таблице (обычно по заголовкам).
     func matches(_ table: ImportTable) -> Bool
     func mapping(for table: ImportTable, calendar: Calendar) -> ColumnMapping
@@ -22,6 +24,7 @@ public struct GenericStatementAdapter: StatementAdapter {
     public let id = "generic"
     public let bank: Bank? = nil
     public let isVerified = false
+    public let displayName: String? = nil
 
     public init() {}
 
@@ -34,7 +37,7 @@ public struct GenericStatementAdapter: StatementAdapter {
 
 public enum StatementAdapterRegistry {
     /// Порядок важен: специализированные адаптеры раньше универсального.
-    public static let adapters: [any StatementAdapter] = [GenericStatementAdapter()]
+    public static let adapters: [any StatementAdapter] = [PaymeStatementAdapter(), GenericStatementAdapter()]
 
     public static func adapter(for table: ImportTable) -> any StatementAdapter {
         adapters.first { $0.matches(table) } ?? GenericStatementAdapter()

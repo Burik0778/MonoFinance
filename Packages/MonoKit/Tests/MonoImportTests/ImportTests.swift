@@ -257,4 +257,166 @@ final class ImportTests: XCTestCase {
         }
         XCTAssertEqual(StatementAdapterRegistry.verifiedBanks, [], "Без реальных образцов ни один банковский формат не заявлен как проверенный")
     }
+
+    // MARK: - Payme: все карты в одном файле
+
+    let orient = Account(bank: .orientFinans, name: "OFB", currency: .uzs)
+    let work = Account(bank: .trastbank, name: "Work", currency: .uzs, lastFour: "9012")
+
+    func paymeTable() throws -> ImportTable {
+        try ImportReader.read(data: try fixture("payme_statement.xlsx"), fileName: "payme.xlsx").tables[0]
+    }
+
+    func paymePipeline(existing: [FinanceTransaction] = [], fingerprints: Set<String> = []) -> ImportPipeline {
+        ImportPipeline(account: account,
+                       cardAccounts: ["414000*1234": account, "860000*5678": orient, "561400*9012": work],
+                       existing: existing, existingFingerprints: fingerprints,
+                       categorizer: CategorizationEngine(categories: categories, rules: []), calendar: calendar)
+    }
+
+    func testCardKeys() throws {
+        let card = try XCTUnwrap(CardKey("414084******7058"))
+        XCTAssertEqual(card.bin, "414084")
+        XCTAssertEqual(card.tail, "7058")
+        XCTAssertEqual(card.lastFour, "7058")
+        let sender = try XCTUnwrap(CardKey("Карта отправителя:\n 414084*******058\t"))
+        XCTAssertEqual(sender.tail, "058")
+        XCTAssertTrue(card.matches(sender), "Payme маскирует номер отправителя иначе — та же карта")
+        XCTAssertFalse(card.matches(try XCTUnwrap(CardKey("414084******7158"))))
+        XCTAssertFalse(card.matches(try XCTUnwrap(CardKey("561468******7058"))))
+        XCTAssertEqual(CardKey("8600123456789012")?.id, "860012*9012")
+        XCTAssertNil(CardKey("ID маркета:\n K224\t"))
+        XCTAssertNil(CardKey("Пользователь:\n 61b6db656280d501c6f4597b\t"))
+        XCTAssertNil(CardKey("15-10-2026"))
+    }
+
+    func testPaymeStatusAndHeaders() {
+        XCTAssertTrue(ValueParsers.isCompleted(.text("Оплачен")))
+        XCTAssertTrue(ValueParsers.isCompleted(.empty))
+        XCTAssertFalse(ValueParsers.isCompleted(.text("Отменен")))
+        XCTAssertFalse(ValueParsers.isCompleted(.text("В очереди")))
+        XCTAssertEqual(ColumnDetector.role(forHeader: "Номер карты"), .card)
+        XCTAssertEqual(ColumnDetector.role(forHeader: "Название карты"), .cardName)
+        XCTAssertEqual(ColumnDetector.role(forHeader: "Состояние чека"), .status)
+        XCTAssertEqual(ColumnDetector.role(forHeader: "Реквизиты платежа"), .details)
+    }
+
+    func testPaymeFormatIsRecognized() throws {
+        let table = try paymeTable()
+        let adapter = StatementAdapterRegistry.adapter(for: table)
+        XCTAssertEqual(adapter.id, "payme")
+        XCTAssertEqual(adapter.displayName, "Payme")
+        XCTAssertFalse(PaymeStatementAdapter().matches(try ImportReader.read(data: try fixture("statement.xlsx"), fileName: "s.xlsx").tables[0]))
+
+        let mapping = adapter.mapping(for: table, calendar: calendar)
+        XCTAssertEqual(mapping.headerRow, 0)
+        XCTAssertEqual(mapping.column(.date), 0)
+        XCTAssertEqual(mapping.column(.time), 1)
+        XCTAssertEqual(mapping.column(.direction), 2)
+        XCTAssertEqual(mapping.column(.merchant), 3)
+        XCTAssertEqual(mapping.column(.amount), 5)
+        XCTAssertEqual(mapping.column(.category), 6)
+        XCTAssertEqual(mapping.column(.details), 8)
+        XCTAssertEqual(mapping.column(.card), 9)
+        XCTAssertEqual(mapping.column(.cardName), 10)
+        XCTAssertEqual(mapping.column(.status), 13)
+
+        let cards = StatementCard.cards(in: table, mapping: mapping)
+        XCTAssertEqual(cards.count, 4)
+        XCTAssertEqual(cards.first?.name, "KapitalVisa", "Карты по числу строк")
+        let accounts = [account, orient, work]
+        func suggestion(_ name: String) -> UUID? { cards.first { $0.name == name }?.suggestedAccount(in: accounts)?.id }
+        XCTAssertEqual(suggestion("KapitalVisa"), account.id, "По названию банка в имени карты")
+        XCTAssertEqual(suggestion("Orient Finans Bank"), orient.id)
+        XCTAssertEqual(suggestion("Work"), work.id, "По последним 4 цифрам")
+        XCTAssertNil(suggestion("Humo"))
+    }
+
+    func testPaymeOwnTransfersBecomeTransfersWithFees() throws {
+        let table = try paymeTable()
+        let preview = try paymePipeline().preview(table: table, mapping: PaymeStatementAdapter().mapping(for: table, calendar: calendar))
+        func uzs(_ value: Decimal) -> Money { Money(major: value, currency: .uzs)! }
+
+        XCTAssertEqual(preview.skipped.filter { $0.reason == .notCompleted }.count, 2, "Отменённый и «В очереди»")
+        XCTAssertEqual(preview.skipped.filter { $0.reason == .unassignedCard }.count, 1, "Карта без счёта не импортируется")
+        XCTAssertEqual(preview.candidates.count, 11)
+        XCTAssertEqual(preview.visibleCandidates.count, 9, "Зачисления внутри переводов скрыты")
+        XCTAssertEqual(preview.transferCount, 2)
+        XCTAssertEqual(preview.feeTotal, uzs(1500))
+
+        let payme = try XCTUnwrap(preview.candidates.first { $0.ownTransfer?.confirmedByDetails == true })
+        XCTAssertEqual(payme.accountID, account.id)
+        XCTAssertEqual(payme.ownTransfer?.destinationAccountID, work.id)
+        XCTAssertEqual(payme.ownTransfer?.received, uzs(50_000))
+        XCTAssertEqual(payme.ownTransfer?.fee, uzs(500))
+
+        let bankApp = try XCTUnwrap(preview.candidates.first { $0.ownTransfer?.confirmedByDetails == false })
+        XCTAssertEqual(bankApp.accountID, account.id)
+        XCTAssertEqual(bankApp.ownTransfer?.destinationAccountID, orient.id)
+        XCTAssertEqual(bankApp.ownTransfer?.received, uzs(100_000))
+        XCTAssertEqual(bankApp.ownTransfer?.fee, uzs(1000))
+
+        // Покупка в магазине через минуту после чужого зачисления — не перевод.
+        let shop = try XCTUnwrap(preview.candidates.first { $0.amount == uzs(336_446) })
+        XCTAssertNil(shop.ownTransfer)
+        XCTAssertEqual(shop.kind, .expense)
+        XCTAssertEqual(shop.accountID, work.id)
+        XCTAssertTrue(preview.candidates.contains { $0.amount == uzs(336_000) && $0.kind == .income && $0.isVisible })
+        // Перевод на чужую карту — расход.
+        let person = try XCTUnwrap(preview.candidates.first { $0.amount == uzs(10_100) })
+        XCTAssertNil(person.ownTransfer)
+        XCTAssertEqual(person.kind, .expense)
+        XCTAssertTrue(preview.candidates.contains { $0.amount.minorUnits == 11_566_975 }, "Тийины сохраняются")
+
+        XCTAssertEqual(preview.total(.outflow), uzs(393_937 + 13_957 + 336_446 + 10_100 + 6_992), "Переводы не попадают в списания")
+        XCTAssertEqual(preview.total(.inflow), uzs(Decimal(string: "451669.75")!))
+
+        // «Это не перевод» — пара снова две строки.
+        var split = preview
+        split.splitTransfer(bankApp.id)
+        XCTAssertEqual(split.transferCount, 1)
+        XCTAssertEqual(split.visibleCandidates.count, 10)
+        XCTAssertTrue(split.candidates.contains { $0.amount == uzs(100_000) && $0.isVisible && $0.include })
+    }
+
+    func testPaymeImportKeepsBalancesAndIsIdempotent() throws {
+        let db = try LedgerDatabase.inMemory()
+        try db.seedDefaultCategories(language: .ru)
+        for item in [account, orient, work] { try db.createAccount(item) }
+        let table = try paymeTable()
+        let mapping = PaymeStatementAdapter().mapping(for: table, calendar: calendar)
+
+        let preview = try paymePipeline().preview(table: table, mapping: mapping)
+        let rows = paymePipeline().transactions(from: preview.candidates)
+        let transfers = rows.filter { $0.kind == .transfer }
+        let fees = rows.filter { $0.kind == .fee }
+        XCTAssertEqual(transfers.count, 2)
+        XCTAssertEqual(fees.count, 2)
+        XCTAssertEqual(Set(fees.compactMap(\.linkedTransactionID)), Set(transfers.map(\.id)), "Комиссия связана со своим переводом")
+        XCTAssertEqual(try db.importTransactions(rows).inserted, 11)
+
+        let stored = try db.transactions()
+        let balances = Ledger.balances(accounts: [account, orient, work], transactions: stored)
+        XCTAssertEqual(balances[account.id]?.minorUnits, -10_386_725)
+        XCTAssertEqual(balances[work.id]?.minorUnits, -30_040_300)
+        XCTAssertEqual(balances[orient.id]?.minorUnits, 9_300_800)
+        let expenses = stored.filter { $0.kind == .expense }.reduce(Int64(0)) { $0 + $1.amount.minorUnits }
+        XCTAssertEqual(expenses, (393_937 + 13_957 + 336_446 + 10_100 + 6_992) * 100, "Переводы между своими картами — не расходы")
+
+        let again = try paymePipeline(existing: stored, fingerprints: try db.existingFingerprints()).preview(table: table, mapping: mapping)
+        XCTAssertTrue(again.candidates.allSatisfy { $0.duplicate == .alreadyImported }, "Обе строки перевода узнаются при повторном импорте")
+        XCTAssertEqual(again.transferCount, 0)
+        XCTAssertEqual(try db.importTransactions(paymePipeline().transactions(from: again.candidates)).inserted, 0)
+        XCTAssertTrue(try db.integrityIssues().isEmpty)
+    }
+
+    func testProfileKeepsCardAccounts() {
+        let profile = ImportProfile(signature: "s", name: "Payme", mapping: ColumnMapping(headerRow: 0, roles: [9: .card]),
+                                    accountID: nil, cardAccounts: ["414000*1234": account.id])
+        XCTAssertEqual(ImportProfile.decode(payload: profile.encodedPayload())?.cardAccounts, ["414000*1234": account.id])
+        let single = ImportProfile(signature: "s", name: "Kapital", mapping: ColumnMapping(headerRow: 0, roles: [0: .date]), accountID: account.id)
+        XCTAssertFalse(single.encodedPayload().contains("cardAccounts"), "Формат старых профилей не меняется")
+        XCTAssertEqual(ImportProfile.decode(payload: single.encodedPayload()), single)
+    }
 }
+

@@ -213,4 +213,16 @@ public enum ValueParsers {
         if outflow.contains(where: { text.hasPrefix($0) }) { return .outflow }
         return nil
     }
+
+    // MARK: - Статус
+
+    /// Завершён ли платёж. Пустой статус считается завершённым; отменённые, отклонённые и ожидающие — нет.
+    public static func isCompleted(_ cell: CellValue) -> Bool {
+        let text = TextNormalizer.fold(cell.text)
+        guard !text.isEmpty else { return true }
+        let unfinished = ["отмен", "отклон", "ошибк", "очеред", "ожида", "в обработк", "возвращ",
+                          "cancel", "declin", "reject", "fail", "error", "pending", "processing", "revers",
+                          "bekor", "rad etil", "kutil", "xato"]
+        return !unfinished.contains { text.contains($0) }
+    }
 }
