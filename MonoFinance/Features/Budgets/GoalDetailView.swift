@@ -68,7 +68,7 @@ struct GoalDetailView: View {
                                 Kicker("Срок")
                                 Text(verbatim: DateFormatting.short(deadline, calendar: store.periods.calendar, language: language))
                                     .monoFont(.headline)
-                                    .foregroundStyle(deadline < now && !status.isCompleted ? Color.mono.coral : Color.mono.textPrimary)
+                                    .foregroundStyle(deadline < now && !status.isCompleted ? Color.mono.negative : Color.mono.textPrimary)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -78,7 +78,7 @@ struct GoalDetailView: View {
                     if status.isCompleted {
                         Label("Цель достигнута", systemImage: "checkmark.seal.fill")
                             .monoFont(.headline)
-                            .foregroundStyle(Color.mono.emerald)
+                            .foregroundStyle(Color.mono.positive)
                             .frame(maxWidth: .infinity)
                     }
                 }
@@ -123,7 +123,7 @@ struct GoalDetailView: View {
                                         }
                                         Spacer()
                                         MoneyText(money: contribution.amount, token: .amountRow, sign: .always,
-                                                  color: contribution.amount.isNegative ? Color.mono.coral : Color.mono.emerald)
+                                                  color: contribution.amount.isNegative ? Color.mono.negative : Color.mono.positive)
                                     }
                                     .padding(.vertical, 10)
                                     .hairlineDivider()
@@ -146,7 +146,7 @@ struct GoalDetailView: View {
             .padding(.bottom, 32)
         }
         .scrollIndicators(.hidden)
-        .background(AmbientBackground(tint: color, secondary: Color.mono.electric, intensity: 0.9))
+        .background(MonoBackdrop(haze: true))
         .navigationTitle(Text(verbatim: goal.name))
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -163,12 +163,12 @@ struct GoalDetailView: View {
         do {
             try store.deleteContribution(contribution)
             Haptics.warning()
-            toasts.show(ToastMessage(text: String(localized: "Взнос удалён"), symbol: "trash.fill", tint: Color.mono.coral,
+            toasts.show(ToastMessage(text: String(localized: "Взнос удалён"), symbol: "trash.fill", tint: Color.mono.negative,
                                      actionTitle: String(localized: "Вернуть")) {
                 try? store.addContribution(contribution)
             })
         } catch {
-            toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.coral))
+            toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.negative))
         }
     }
 }

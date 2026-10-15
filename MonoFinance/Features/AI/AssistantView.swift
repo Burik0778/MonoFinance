@@ -54,7 +54,7 @@ struct AssistantView: View {
                 }
                 inputBar
             }
-            .background(AmbientBackground(tint: Color.mono.violet, secondary: Color.mono.cyan, intensity: 0.7).ignoresSafeArea())
+            .background(MonoBackdrop(haze: true).ignoresSafeArea())
             .navigationTitle(Text("Спросить MONO"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -78,7 +78,7 @@ struct AssistantView: View {
 
     private var intro: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Kicker("Ассистент", color: Color.mono.violet)
+            Kicker("Ассистент", color: Color.mono.accent)
             Text("Спросите о своих деньгах")
                 .monoFont(.display)
                 .foregroundStyle(Color.mono.textPrimary)
@@ -99,7 +99,7 @@ struct AssistantView: View {
                     HStack(alignment: .firstTextBaseline, spacing: 14) {
                         Text(verbatim: String(format: "%02d", index + 1))
                             .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(Color.mono.violet)
+                            .foregroundStyle(Color.mono.accentText)
                         Text(verbatim: phrase(language))
                             .monoFont(.quote)
                             .foregroundStyle(Color.mono.textPrimary)
@@ -135,7 +135,7 @@ struct AssistantView: View {
                     .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: 46, height: 46)
-                    .background(Circle().fill(LinearGradient(colors: [Color.mono.violet, Color.mono.electric], startPoint: .topLeading, endPoint: .bottomTrailing)))
+                    .background(Circle().fill(LinearGradient(colors: [Color.mono.accent, Color.mono.accent], startPoint: .topLeading, endPoint: .bottomTrailing)))
             }
             .buttonStyle(PressableStyle(scale: 0.9))
             .disabled(question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -201,7 +201,7 @@ private struct ExchangeView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top, spacing: 12) {
                     Capsule(style: .continuous)
-                        .fill(LinearGradient(colors: [Color.mono.violet, Color.mono.cyan.opacity(0.2)], startPoint: .top, endPoint: .bottom))
+                        .fill(LinearGradient(colors: [Color.mono.accent, Color.mono.accent.opacity(0.2)], startPoint: .top, endPoint: .bottom))
                         .frame(width: 3)
                     VStack(alignment: .leading, spacing: 8) {
                         Text(verbatim: hideAmounts && exchange.answer.hasData ? "•••" : exchange.answer.headline)
@@ -235,12 +235,12 @@ private struct ExchangeView: View {
                 if let note = exchange.answer.note {
                     Label { Text(verbatim: note) } icon: { Image(systemName: "info.circle") }
                         .monoFont(.footnote)
-                        .foregroundStyle(Color.mono.tangerine)
+                        .foregroundStyle(Color.mono.warning)
                 }
 
                 if let explanation = exchange.explanation {
                     VStack(alignment: .leading, spacing: 6) {
-                        Kicker("Пояснение модели", color: Color.mono.cyan)
+                        Kicker("Пояснение модели", color: Color.mono.accent)
                         Text(verbatim: explanation)
                             .monoFont(.callout)
                             .foregroundStyle(Color.mono.textPrimary)
@@ -250,7 +250,7 @@ private struct ExchangeView: View {
                             .foregroundStyle(Color.mono.textTertiary)
                     }
                     .padding(12)
-                    .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.cyan.opacity(0.08)))
+                    .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.accent.opacity(0.08)))
                 } else if remoteAvailable && exchange.answer.hasData && !hideAmounts {
                     Button {
                         Task { await explain() }
@@ -269,7 +269,7 @@ private struct ExchangeView: View {
                     if let error = exchange.explanationError {
                         Text(verbatim: error)
                             .monoFont(.caption)
-                            .foregroundStyle(Color.mono.coral)
+                            .foregroundStyle(Color.mono.negative)
                     }
                 }
             }
@@ -294,7 +294,7 @@ private struct ExchangeView: View {
                     .foregroundStyle(Color.mono.textTertiary)
             }
             if let share = row.share {
-                ProgressTrack(progress: share, tint: row.tone == .neutral ? Color.mono.violet : tint(row.tone), height: 4)
+                ProgressTrack(progress: share, tint: row.tone == .neutral ? Color.mono.accent : tint(row.tone), height: 4)
             }
         }
         .padding(.vertical, 8)
@@ -304,8 +304,8 @@ private struct ExchangeView: View {
     private func tint(_ tone: AssistantAnswer.Row.Tone) -> Color {
         switch tone {
         case .neutral: return Color.mono.textPrimary
-        case .positive: return Color.mono.emerald
-        case .negative: return Color.mono.coral
+        case .positive: return Color.mono.positive
+        case .negative: return Color.mono.negative
         }
     }
 

@@ -36,7 +36,7 @@ struct FontToken: Sendable {
         let base: Font
         switch style {
         case .default: base = .system(size: size, weight: weight, design: .default)
-        case .serif: base = .system(size: size, weight: weight, design: .serif)
+        case .serif: base = .system(size: size, weight: weight, design: .default)
         case .rounded: base = .system(size: size, weight: weight, design: .rounded)
         case .monospaced: base = .system(size: size, weight: weight, design: .monospaced)
         case .expanded: base = .system(size: size, weight: weight, design: .default).width(.expanded)
@@ -90,7 +90,7 @@ struct Kicker: View {
     }
 }
 
-/// Заголовок секции: кикер + заголовок серифом + необязательное действие справа.
+/// Заголовок секции: кикер + заголовок + необязательное действие справа.
 struct SectionHeader<Trailing: View>: View {
     let kicker: LocalizedStringKey
     let title: LocalizedStringKey?

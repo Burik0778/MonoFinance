@@ -47,7 +47,7 @@ struct RootView: View {
                 .environment(\.appLanguage, language)
         }
         .preferredColorScheme(colorScheme)
-        .tint(Color.mono.electric)
+        .tint(Color.mono.accentText)
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .background:
@@ -103,27 +103,29 @@ struct RootView: View {
     }
 }
 
-/// Плашка демо-режима: данные не настоящие.
+/// Плашка демо-режима: данные не настоящие. Нейтральная, с тёплой точкой-статусом — заметная, но не кричащая.
 struct DemoBanner: View {
     let onExit: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: "theatermasks.fill")
+            Circle()
+                .fill(Color.mono.warning)
+                .frame(width: 6, height: 6)
             Text("Демо-режим · данные не настоящие")
                 .monoFont(.caption)
+                .foregroundStyle(Color.mono.textSecondary)
             Button("Выйти", action: onExit)
                 .monoFont(.caption)
-                .foregroundStyle(Color.white)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(Capsule().fill(Color.white.opacity(0.2)))
+                .foregroundStyle(Color.mono.accentText)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
         }
-        .foregroundStyle(.white)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 6)
-        .background(Capsule().fill(LinearGradient(colors: [Color.mono.tangerine, Color.mono.magenta], startPoint: .leading, endPoint: .trailing)))
-        .padding(.top, 2)
+        .padding(.leading, 12)
+        .padding(.trailing, 4)
+        .padding(.vertical, 4)
+        .background(Capsule().fill(Color.mono.surface1))
+        .overlay(Capsule().strokeBorder(Color.mono.strokeStrong, lineWidth: 1))
         .accessibilityElement(children: .combine)
     }
 }
@@ -133,7 +135,7 @@ struct PrivacyShieldView: View {
     var body: some View {
         ZStack {
             Color.mono.background.ignoresSafeArea()
-            AmbientBackground(tint: Color.mono.violet, intensity: 0.8)
+            MonoBackdrop(haze: true)
             VStack(spacing: 12) {
                 Text(verbatim: "MONO")
                     .font(.system(size: 44, weight: .bold, design: .default).width(.expanded))
@@ -149,12 +151,12 @@ struct LockScreenView: View {
 
     var body: some View {
         ZStack {
-            AmbientBackground(tint: Color.mono.electric, intensity: 1)
+            MonoBackdrop(haze: true)
             VStack(spacing: 28) {
                 Spacer()
                 Image(systemName: symbol)
                     .font(.system(size: 54, weight: .light))
-                    .foregroundStyle(LinearGradient(colors: [Color.mono.electric, Color.mono.violet], startPoint: .top, endPoint: .bottom))
+                    .foregroundStyle(Color.mono.accentText)
                 VStack(spacing: 8) {
                     Text("MONO заблокировано")
                         .monoFont(.display)
@@ -166,7 +168,7 @@ struct LockScreenView: View {
                 if let error = lock.lastError {
                     Text(verbatim: error)
                         .monoFont(.footnote)
-                        .foregroundStyle(Color.mono.coral)
+                        .foregroundStyle(Color.mono.negative)
                         .multilineTextAlignment(.center)
                 }
                 Spacer()

@@ -2,31 +2,34 @@ import SwiftUI
 import UIKit
 import MonoCore
 
-/// Значок категории: скруглённый квадрат с тонированной заливкой.
+/// Значок категории: монохромная плитка. Цвет в списках не используется — различие даёт форма значка.
+/// `tinted` показывает приглушённый тон категории (экран категорий, редакторы); `isSelected` — акцентная заливка выбора.
 struct CategoryGlyph: View {
     let icon: String
     let color: Color
     var size: CGFloat = 40
+    var tinted = false
+    var isSelected = false
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: size * 0.32, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
         Image(systemName: icon)
-            .font(.system(size: size * 0.42, weight: .semibold))
-            .symbolRenderingMode(.hierarchical)
-            .foregroundStyle(color)
+            .font(.system(size: size * 0.4, weight: .medium))
+            .symbolRenderingMode(.monochrome)
+            .foregroundStyle(isSelected ? Color.mono.onAccent : (tinted ? color : Color.mono.textSecondary))
             .frame(width: size, height: size)
-            .background(shape.fill(color.opacity(0.16)))
-            .overlay(shape.strokeBorder(color.opacity(0.28), lineWidth: 1))
+            .background(shape.fill(isSelected ? Color.mono.accent : (tinted ? color.opacity(0.14) : Color.mono.surface2)))
+            .overlay(shape.strokeBorder(isSelected ? Color.clear : Color.mono.strokeSubtle, lineWidth: 1))
             .accessibilityHidden(true)
     }
 }
 
 extension CategoryGlyph {
-    init(category: FinanceCategory?, kind: TransactionKind, size: CGFloat = 40) {
+    init(category: FinanceCategory?, kind: TransactionKind, size: CGFloat = 40, tinted: Bool = false) {
         if let category {
-            self.init(icon: category.icon, color: category.color.color, size: size)
+            self.init(icon: category.icon, color: category.color.color, size: size, tinted: tinted)
         } else {
-            self.init(icon: kind.symbol, color: kind.tint, size: size)
+            self.init(icon: kind.symbol, color: kind.tint, size: size, tinted: tinted)
         }
     }
 }
@@ -55,12 +58,13 @@ struct SegmentedPills<Value: Hashable>: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .frame(maxWidth: stretch ? .infinity : nil)
-                        .foregroundStyle(selected ? Color.mono.textPrimary : Color.mono.textSecondary)
+                        .foregroundStyle(selected ? Color.mono.textPrimary : Color.mono.textTertiary)
                         .background {
                             if selected {
                                 Capsule(style: .continuous)
                                     .fill(Color.mono.surface3)
                                     .overlay(Capsule(style: .continuous).strokeBorder(Color.mono.strokeStrong, lineWidth: 1))
+                                    .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 2)
                                     .matchedGeometryEffect(id: "pill", in: namespace)
                             }
                         }
@@ -79,7 +83,7 @@ struct SegmentedPills<Value: Hashable>: View {
 /// Полоса прогресса (бюджеты, цели).
 struct ProgressTrack: View {
     let progress: Double
-    var tint: Color = Color.mono.electric
+    var tint: Color = Color.mono.accent
     var height: CGFloat = 8
 
     var body: some View {
@@ -88,7 +92,7 @@ struct ProgressTrack: View {
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.mono.surface3)
                 Capsule()
-                    .fill(LinearGradient(colors: [tint.opacity(0.75), tint], startPoint: .leading, endPoint: .trailing))
+                    .fill(tint)
                     .frame(width: max(height, proxy.size.width * clamped))
                     .opacity(clamped > 0 ? 1 : 0)
             }
@@ -102,7 +106,7 @@ struct ProgressTrack: View {
 /// Кольцо прогресса.
 struct ProgressRing: View {
     let progress: Double
-    var tint: Color = Color.mono.electric
+    var tint: Color = Color.mono.accent
     var lineWidth: CGFloat = 10
 
     var body: some View {
@@ -110,10 +114,7 @@ struct ProgressRing: View {
             Circle().stroke(Color.mono.surface3, lineWidth: lineWidth)
             Circle()
                 .trim(from: 0, to: min(max(progress, 0), 1))
-                .stroke(
-                    AngularGradient(colors: [tint.opacity(0.6), tint], center: .center, startAngle: .degrees(-90), endAngle: .degrees(270)),
-                    style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
-                )
+                .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
         }
         .accessibilityElement()
@@ -184,7 +185,7 @@ struct MonoTextField: View {
         }
         .padding(.horizontal, 14)
         .frame(minHeight: 50)
-        .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.surface3))
+        .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.surface2))
         .overlay(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).strokeBorder(Color.mono.strokeSubtle, lineWidth: 1))
     }
 }
@@ -207,7 +208,7 @@ struct FormRow<Trailing: View>: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            CategoryGlyph(icon: icon, color: tint, size: 34)
+            CategoryGlyph(icon: icon, color: tint, size: 32)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .monoFont(.body)

@@ -115,15 +115,15 @@ struct NumberPad: View {
         switch key {
         case .digit(let digit):
             Text(verbatim: "\(digit)")
-                .font(.system(size: 26, weight: .medium, design: .serif))
+                .font(.system(size: 26, weight: .medium, design: .default))
                 .foregroundStyle(Color.mono.textPrimary)
         case .tripleZero:
             Text(verbatim: "000")
-                .font(.system(size: 20, weight: .medium, design: .serif))
+                .font(.system(size: 20, weight: .medium, design: .default))
                 .foregroundStyle(Color.mono.textPrimary)
         case .separator:
             Text(verbatim: decimalSeparator)
-                .font(.system(size: 26, weight: .medium, design: .serif))
+                .font(.system(size: 26, weight: .medium, design: .default))
                 .foregroundStyle(Color.mono.textPrimary)
         case .delete, .clear:
             Image(systemName: "delete.left")

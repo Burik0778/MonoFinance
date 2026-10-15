@@ -86,15 +86,15 @@ struct RecurringListView: View {
                 }
                 try? store.saveRecurring(updated)
             }
-            .tint(Color.mono.tangerine)
+            .tint(Color.mono.warning)
         }
         .swipeActions(edge: .leading) {
             if rule.isActive {
                 Button("Пропустить", systemImage: "forward.end.fill") {
                     try? store.skipRecurring(rule)
-                    toasts.show(ToastMessage(text: String(localized: "Ближайший платёж пропущен"), symbol: "forward.end.fill", tint: Color.mono.violet))
+                    toasts.show(ToastMessage(text: String(localized: "Ближайший платёж пропущен"), symbol: "forward.end.fill", tint: Color.mono.accent))
                 }
-                .tint(Color.mono.violet)
+                .tint(Color.mono.accent)
             }
         }
     }
@@ -132,12 +132,11 @@ struct RecurringEditorView: View {
 
     var body: some View {
         EditorScaffold(title: existing == nil ? "Регулярный платёж" : "Изменение платежа",
-                       saveColors: kind == .income ? [Color.mono.emerald, Color.mono.cyan] : [Color.mono.electric, Color.mono.violet],
                        canSave: !title.trimmingCharacters(in: .whitespaces).isEmpty && AmountField.parse(amountText, currency: currency) != nil && accountID != nil,
                        error: error, onSave: save) {
             SegmentedPills(options: [TransactionKind.expense, .income], selection: $kind, title: { $0.title(language) }, stretch: true)
             MonoTextField(title: "Название (например, «Аренда»)", text: $title, systemImage: "repeat")
-            AmountField(text: $amountText, currency: currency, tint: kind == .income ? Color.mono.emerald : Color.mono.textPrimary)
+            AmountField(text: $amountText, currency: currency, tint: kind == .income ? Color.mono.positive : Color.mono.textPrimary)
 
             FormSection(title: kind == .income ? "На счёт" : "Со счёта") {
                 AccountPickerMenu(accounts: store.activeAccounts, selection: $accountID)
@@ -159,7 +158,7 @@ struct RecurringEditorView: View {
                             .monoFont(.body)
                             .foregroundStyle(Color.mono.textSecondary)
                     }
-                    .tint(Color.mono.electric)
+                    .tint(Color.mono.accent)
                     .padding(.horizontal, 14)
                     .frame(minHeight: 50)
                     .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.surface2))
@@ -178,9 +177,9 @@ struct RecurringEditorView: View {
 
             ToggleRow(title: "Напоминание", subtitle: "Уведомление в день платежа. Операция создаётся только после вашего подтверждения.", isOn: $reminder)
             if existing != nil {
-                ToggleRow(title: "Активно", isOn: $active, tint: Color.mono.emerald)
+                ToggleRow(title: "Активно", isOn: $active, tint: Color.mono.positive)
                 Button("Удалить", role: .destructive) { confirmsDelete = true }
-                    .buttonStyle(SecondaryButtonStyle(tint: Color.mono.coral))
+                    .buttonStyle(SecondaryButtonStyle(tint: Color.mono.negative))
             }
         }
         .onAppear(perform: load)

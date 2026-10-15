@@ -37,7 +37,7 @@ struct ExchangeRatesView: View {
                             } else {
                                 Label("Нет курса", systemImage: "exclamationmark.triangle.fill")
                                     .monoFont(.caption)
-                                    .foregroundStyle(Color.mono.tangerine)
+                                    .foregroundStyle(Color.mono.warning)
                             }
                         }
                     }
@@ -52,10 +52,10 @@ struct ExchangeRatesView: View {
 
             Section {
                 Toggle(isOn: $settings.cbuRatesEnabled) {
-                    FormRow(icon: "building.columns", tint: Color.mono.emerald, title: "Курсы ЦБ РУз",
+                    FormRow(icon: "building.columns", tint: Color.mono.positive, title: "Курсы ЦБ РУз",
                             subtitle: Text("Обновляются автоматически при открытии приложения"))
                 }
-                .tint(Color.mono.emerald)
+                .tint(Color.mono.positive)
                 Button {
                     Task { await refresh() }
                 } label: {
@@ -74,12 +74,12 @@ struct ExchangeRatesView: View {
                 if store.baseCurrency != .uzs {
                     Text("Курсы ЦБ публикуются к суму. При основной валюте \(store.baseCurrency.code) добавьте курсы вручную.")
                         .monoFont(.caption)
-                        .foregroundStyle(Color.mono.tangerine)
+                        .foregroundStyle(Color.mono.warning)
                 }
                 if let error {
                     Text(verbatim: error)
                         .monoFont(.caption)
-                        .foregroundStyle(Color.mono.coral)
+                        .foregroundStyle(Color.mono.negative)
                 }
             } header: {
                 Kicker("Официальные курсы")
@@ -124,7 +124,7 @@ struct ExchangeRatesView: View {
                                     .foregroundStyle(Color.mono.textPrimary)
                                 Text(verbatim: "\(rate.source == .cbu ? "ЦБ" : Phrase(ru: "вручную", uz: "qo‘lda", en: "manual")(language)) · \(DateFormatting.short(rate.date, calendar: store.periods.calendar, language: language))")
                                     .monoFont(.caption)
-                                    .foregroundStyle(rate.source == .manual ? Color.mono.violet : Color.mono.textTertiary)
+                                    .foregroundStyle(rate.source == .manual ? Color.mono.accent : Color.mono.textTertiary)
                             }
                             Spacer()
                             Text(verbatim: rateText(currency: rate.currency, rate: rate.rate, base: rate.baseCurrency))

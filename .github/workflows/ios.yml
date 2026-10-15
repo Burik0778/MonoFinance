@@ -3,7 +3,7 @@ name: iOS build
 
 on:
   push:
-    branches: [main]
+    branches: [main, redesign]
   workflow_dispatch:
 
 permissions:
@@ -66,12 +66,13 @@ jobs:
           grep -E ' error: | warning: ' /tmp/ci/build.log | sort -u > /tmp/ci/errors.txt || true
           echo "${GITHUB_SHA}" > /tmp/ci/commit.txt
           cd /tmp/ci
-          git init -q -b ci-logs
+          BR=ci-logs; [ "$GITHUB_REF_NAME" != main ] && BR="ci-logs-$GITHUB_REF_NAME"
+          git init -q -b "$BR"
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
           git add -A
           git commit -qm "CI log ${GITHUB_SHA::7}"
-          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-logs
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$BR"
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
@@ -91,6 +92,7 @@ jobs:
           name: MonoFinance-ipa
           path: MonoFinance.ipa
       - name: Publish "latest" release
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -174,9 +176,10 @@ jobs:
           sed "s|$GITHUB_WORKSPACE/||g" sim.log | grep -E ' error: | warning: ' | sort -u > /tmp/shots/sim-errors.txt || true
           echo "${GITHUB_SHA}" > /tmp/shots/commit.txt
           cd /tmp/shots
-          git init -q -b ci-shots
+          BR=ci-shots; [ "$GITHUB_REF_NAME" != main ] && BR="ci-shots-$GITHUB_REF_NAME"
+          git init -q -b "$BR"
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
           git add -A
           git commit -qm "Screenshots ${GITHUB_SHA::7}"
-          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-shots
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$BR"

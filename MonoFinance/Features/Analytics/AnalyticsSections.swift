@@ -104,11 +104,11 @@ struct LedgerStrip: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 0) {
-                column("Доходы", money: summary.income, color: Color.mono.emerald)
+                column("Доходы", money: summary.income, color: Color.mono.positive)
                 divider
                 column("Расходы", money: summary.spending, color: Color.mono.textPrimary)
                 divider
-                column("Итог", money: summary.net, color: summary.net.isNegative ? Color.mono.coral : Color.mono.emerald, signed: true)
+                column("Итог", money: summary.net, color: summary.net.isNegative ? Color.mono.negative : Color.mono.positive, signed: true)
             }
             if !summary.fees.isZero || !summary.refunds.isZero {
                 HStack(spacing: 14) {
@@ -259,7 +259,7 @@ struct CategoryDonutCard: View {
     private func legendRow(_ slice: Slice) -> some View {
         HStack(spacing: 12) {
             if slice.isOther {
-                CategoryGlyph(icon: "ellipsis", color: Color.mono.steel, size: 34)
+                CategoryGlyph(icon: "ellipsis", color: Color.mono.neutral, size: 34)
             } else {
                 CategoryGlyph(category: slice.categoryID.flatMap { store.categoryMap[$0] }, kind: .expense, size: 34)
             }
@@ -294,8 +294,8 @@ struct CategoryDonutCard: View {
     }
 
     private func color(of slice: Slice) -> Color {
-        if slice.isOther { return Color.mono.steel }
-        guard let id = slice.categoryID, let category = store.categoryMap[id] else { return Color.mono.steel }
+        if slice.isOther { return Color.mono.neutral }
+        guard let id = slice.categoryID, let category = store.categoryMap[id] else { return Color.mono.neutral }
         return category.color.color
     }
 
@@ -346,19 +346,19 @@ struct TrendCard: View {
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 4) {
-                    MoneyText(money: income, token: .callout, sign: .always, color: Color.mono.emerald, compact: true)
-                    MoneyText(money: outflow.negated, token: .callout, color: Color.mono.coral, compact: true)
+                    MoneyText(money: income, token: .callout, sign: .always, color: Color.mono.positive, compact: true)
+                    MoneyText(money: outflow.negated, token: .callout, color: Color.mono.negative, compact: true)
                 }
             }
             if points.count > 1 {
                 Chart {
                     ForEach(points) { point in
                         BarMark(x: .value("Период", point.date, unit: unit), y: .value("Доход", point.income.chartValue))
-                            .foregroundStyle(Color.mono.emerald.gradient)
+                            .foregroundStyle(Color.mono.positive.gradient)
                             .cornerRadius(3)
                             .opacity(selected == nil || selected?.date == point.date ? 1 : 0.35)
                         BarMark(x: .value("Период", point.date, unit: unit), y: .value("Расход", -point.outflow.chartValue))
-                            .foregroundStyle(Color.mono.coral.gradient)
+                            .foregroundStyle(Color.mono.negative.gradient)
                             .cornerRadius(3)
                             .opacity(selected == nil || selected?.date == point.date ? 1 : 0.35)
                     }
@@ -452,7 +452,7 @@ struct CategoryChangesCard: View {
                         VStack(alignment: .trailing, spacing: 2) {
                             // Рост расходов — коралловый, снижение — изумрудный.
                             MoneyText(money: delta.change, token: .amountRow, sign: .always,
-                                      color: delta.change.isPositive ? Color.mono.coral : Color.mono.emerald, compact: true)
+                                      color: delta.change.isPositive ? Color.mono.negative : Color.mono.positive, compact: true)
                             if let ratio = delta.changeRatio {
                                 Text(verbatim: PercentFormatting.string(ratio, language: language, signed: true))
                                     .monoFont(.caption, digits: true)
@@ -460,7 +460,7 @@ struct CategoryChangesCard: View {
                             } else {
                                 Text("новая")
                                     .monoFont(.caption)
-                                    .foregroundStyle(Color.mono.violet)
+                                    .foregroundStyle(Color.mono.accentText)
                             }
                         }
                     }
@@ -485,21 +485,21 @@ struct MandatorySplitCard: View {
                 SectionHeader(kicker: "Структура", title: "Обязательные траты") {
                     Button("Настроить") { router.open(.categories) }
                         .monoFont(.subhead)
-                        .foregroundStyle(Color.mono.electric)
+                        .foregroundStyle(Color.mono.accentText)
                 }
                 GeometryReader { proxy in
                     HStack(spacing: 3) {
-                        segment(split.mandatory, total: total, width: proxy.size.width, color: Color.mono.violet)
-                        segment(split.optional, total: total, width: proxy.size.width, color: Color.mono.cyan)
-                        segment(split.uncategorized, total: total, width: proxy.size.width, color: Color.mono.steel)
+                        segment(split.mandatory, total: total, width: proxy.size.width, color: Color.mono.accent)
+                        segment(split.optional, total: total, width: proxy.size.width, color: Color.mono.accent)
+                        segment(split.uncategorized, total: total, width: proxy.size.width, color: Color.mono.neutral)
                     }
                 }
                 .frame(height: 14)
                 HStack(alignment: .top, spacing: 12) {
-                    legend("Обязательные", money: split.mandatory, share: split.mandatory.chartValue / total, color: Color.mono.violet)
-                    legend("Остальные", money: split.optional, share: split.optional.chartValue / total, color: Color.mono.cyan)
+                    legend("Обязательные", money: split.mandatory, share: split.mandatory.chartValue / total, color: Color.mono.accent)
+                    legend("Остальные", money: split.optional, share: split.optional.chartValue / total, color: Color.mono.accent)
                     if split.uncategorized.isPositive {
-                        legend("Без категории", money: split.uncategorized, share: split.uncategorized.chartValue / total, color: Color.mono.steel)
+                        legend("Без категории", money: split.uncategorized, share: split.uncategorized.chartValue / total, color: Color.mono.neutral)
                     }
                 }
                 Text("Обязательными считаются категории с отметкой «Обязательная»: жильё, связь, кредиты и т. п.")
@@ -555,8 +555,8 @@ struct MerchantsCard: View {
                 } label: {
                     HStack(spacing: 14) {
                         Text(verbatim: "\(index + 1)")
-                            .font(.system(size: 26, weight: .semibold, design: .serif).monospacedDigit())
-                            .foregroundStyle(index == 0 ? Color.mono.electric : Color.mono.textTertiary)
+                            .font(.system(size: 26, weight: .semibold, design: .default).monospacedDigit())
+                            .foregroundStyle(index == 0 ? Color.mono.accent : Color.mono.textTertiary)
                             .frame(width: 26)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(verbatim: merchant.name)
@@ -624,7 +624,7 @@ struct AccountFlowsCard: View {
                             Spacer(minLength: 8)
                             VStack(alignment: .trailing, spacing: 2) {
                                 if flow.income.isPositive {
-                                    MoneyText(money: flow.income, token: .footnote, sign: .always, color: Color.mono.emerald, compact: true)
+                                    MoneyText(money: flow.income, token: .footnote, sign: .always, color: Color.mono.positive, compact: true)
                                 }
                                 if (flow.spending + flow.fees).isPositive {
                                     MoneyText(money: (flow.spending + flow.fees).negated, token: .footnote, color: Color.mono.textPrimary, compact: true)
@@ -633,9 +633,9 @@ struct AccountFlowsCard: View {
                                     HStack(spacing: 3) {
                                         Image(systemName: "arrow.left.arrow.right")
                                             .font(.system(size: 9, weight: .bold))
-                                        MoneyText(money: flow.transfersIn - flow.transfersOut, token: .caption, sign: .always, color: Color.mono.sky, compact: true)
+                                        MoneyText(money: flow.transfersIn - flow.transfersOut, token: .caption, sign: .always, color: Color.mono.textSecondary, compact: true)
                                     }
-                                    .foregroundStyle(Color.mono.sky)
+                                    .foregroundStyle(Color.mono.textSecondary)
                                 }
                             }
                         }
@@ -675,9 +675,9 @@ struct IncomeSourcesCard: View {
                                 .foregroundStyle(Color.mono.textPrimary)
                                 .lineLimit(1)
                             Spacer(minLength: 8)
-                            MoneyText(money: item.amount, token: .amountRow, color: Color.mono.emerald, compact: true)
+                            MoneyText(money: item.amount, token: .amountRow, color: Color.mono.positive, compact: true)
                         }
-                        ProgressTrack(progress: item.share, tint: Color.mono.emerald, height: 4)
+                        ProgressTrack(progress: item.share, tint: Color.mono.positive, height: 4)
                     }
                 }
             }
@@ -714,7 +714,7 @@ struct UnusualExpensesCard: View {
                                 .lineLimit(1)
                             Text(verbatim: hideAmounts ? "" : detail(item))
                                 .monoFont(.caption)
-                                .foregroundStyle(Color.mono.tangerine)
+                                .foregroundStyle(Color.mono.warning)
                         }
                         Spacer(minLength: 8)
                         MoneyText(money: item.transaction.amount, token: .amountRow, compact: true)
@@ -784,7 +784,7 @@ struct RecurringCandidatesCard: View {
                                     anchorDate: candidate.nextExpectedDate
                                 )))
                             }
-                            .buttonStyle(ChipStyle(isSelected: true, tint: Color.mono.violet))
+                            .buttonStyle(ChipStyle(isSelected: true, tint: Color.mono.accent))
                         }
                     }
                 }
@@ -808,17 +808,17 @@ struct ForecastCard: View {
             VStack(alignment: .leading, spacing: 14) {
                 SectionHeader(kicker: "Прогноз", title: "Накопления за 3 месяца")
                 HeroAmount(money: forecast.projectedSavings, token: .display, secondaryToken: .title2,
-                           color: forecast.projectedSavings.isNegative ? Color.mono.coral : Color.mono.emerald)
+                           color: forecast.projectedSavings.isNegative ? Color.mono.negative : Color.mono.positive)
                 HStack(alignment: .top, spacing: 12) {
-                    figure(Phrase(ru: "Доход/мес", uz: "Daromad/oy", en: "Income/mo")(language), forecast.averageIncome, Color.mono.emerald)
+                    figure(Phrase(ru: "Доход/мес", uz: "Daromad/oy", en: "Income/mo")(language), forecast.averageIncome, Color.mono.positive)
                     figure(Phrase(ru: "Расход/мес", uz: "Xarajat/oy", en: "Spend/mo")(language), forecast.averageOutflow, Color.mono.textPrimary)
                     if forecast.plannedExpenses.isPositive {
-                        figure(Phrase(ru: "План", uz: "Reja", en: "Planned")(language), forecast.plannedExpenses, Color.mono.tangerine)
+                        figure(Phrase(ru: "План", uz: "Reja", en: "Planned")(language), forecast.plannedExpenses, Color.mono.warning)
                     }
                 }
                 Text(verbatim: basisText)
                     .monoFont(.caption)
-                    .foregroundStyle(forecast.isReliable ? Color.mono.textTertiary : Color.mono.tangerine)
+                    .foregroundStyle(forecast.isReliable ? Color.mono.textTertiary : Color.mono.warning)
             }
             .monoSurface(radius: MonoTokens.Radius.xl, padding: 18)
         }

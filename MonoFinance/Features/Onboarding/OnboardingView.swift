@@ -16,7 +16,7 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            AmbientBackground(tint: tint, secondary: Color.mono.electric, intensity: 1.3)
+            MonoBackdrop(haze: true)
             VStack(spacing: 0) {
                 if step > 0 {
                     HStack(spacing: 6) {
@@ -46,10 +46,10 @@ struct OnboardingView: View {
 
     private var tint: Color {
         switch step {
-        case 0: return Color.mono.violet
-        case 1: return Color.mono.cyan
-        case 2: return Color.mono.electric
-        default: return Color.mono.emerald
+        case 0: return Color.mono.accent
+        case 1: return Color.mono.accent
+        case 2: return Color.mono.accent
+        default: return Color.mono.positive
         }
     }
 
@@ -64,7 +64,7 @@ struct OnboardingView: View {
                     .foregroundStyle(LinearGradient(colors: Color.mono.voiceGradient, startPoint: .leading, endPoint: .trailing))
                     .accessibilityAddTraits(.isHeader)
                 Text("Все ваши деньги — в одной ясной картине.")
-                    .font(.system(size: 34, weight: .semibold, design: .serif))
+                    .font(.system(size: 34, weight: .semibold, design: .default))
                     .foregroundStyle(Color.mono.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
                 VStack(alignment: .leading, spacing: 14) {
@@ -96,7 +96,7 @@ struct OnboardingView: View {
         HStack(alignment: .top, spacing: 14) {
             Image(systemName: symbol)
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Color.mono.cyan)
+                .foregroundStyle(Color.mono.accentText)
                 .frame(width: 26)
             Text(text)
                 .monoFont(.callout)
@@ -133,7 +133,7 @@ struct OnboardingView: View {
                         .frame(minHeight: 62)
                         .background(
                             RoundedRectangle(cornerRadius: MonoTokens.Radius.lg, style: .continuous)
-                                .fill(currency == option ? AnyShapeStyle(LinearGradient(colors: [Color.mono.electric, Color.mono.violet], startPoint: .leading, endPoint: .trailing)) : AnyShapeStyle(Color.mono.surface1))
+                                .fill(currency == option ? AnyShapeStyle(LinearGradient(colors: [Color.mono.accent, Color.mono.accent], startPoint: .leading, endPoint: .trailing)) : AnyShapeStyle(Color.mono.surface1))
                         )
                     }
                     .buttonStyle(PressableStyle(scale: 0.98))
@@ -180,9 +180,9 @@ struct OnboardingView: View {
                         HStack(spacing: 12) {
                             Image(systemName: "plus")
                                 .font(.system(size: 18, weight: .bold))
-                                .foregroundStyle(Color.mono.electric)
+                                .foregroundStyle(Color.mono.accentText)
                                 .frame(width: 40, height: 40)
-                                .background(Circle().fill(Color.mono.electric.opacity(0.14)))
+                                .background(Circle().fill(Color.mono.accent.opacity(0.14)))
                             Text(store.activeAccounts.isEmpty ? "Добавить первый счёт" : "Добавить ещё счёт")
                                 .monoFont(.headline)
                                 .foregroundStyle(Color.mono.textPrimary)
@@ -207,7 +207,7 @@ struct OnboardingView: View {
                 if store.defaultAccount == nil, let first = store.activeAccounts.first { try? store.setDefaultAccount(first) }
                 next()
             }
-            .buttonStyle(PrimaryButtonStyle(colors: store.activeAccounts.isEmpty ? [Color.mono.surface3, Color.mono.surface3] : [Color.mono.electric, Color.mono.violet]))
+            .buttonStyle(PrimaryButtonStyle())
         }
         .padding(.horizontal, 24)
         .padding(.top, 24)
@@ -231,14 +231,14 @@ struct OnboardingView: View {
                                 .foregroundStyle(Color.mono.textSecondary)
                         }
                     }
-                    .tint(Color.mono.emerald)
+                    .tint(Color.mono.positive)
                     .padding(14)
                     .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.surface1))
                 }
-                ToggleRow(title: "Скрывать суммы при запуске", subtitle: "Удобно, если показываете экран другим", isOn: Binding(get: { settings.hideAmountsOnLaunch }, set: { settings.hideAmountsOnLaunch = $0 }), tint: Color.mono.emerald)
+                ToggleRow(title: "Скрывать суммы при запуске", subtitle: "Удобно, если показываете экран другим", isOn: Binding(get: { settings.hideAmountsOnLaunch }, set: { settings.hideAmountsOnLaunch = $0 }), tint: Color.mono.positive)
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: "mic.fill")
-                        .foregroundStyle(Color.mono.violet)
+                        .foregroundStyle(Color.mono.accentText)
                         .frame(width: 24)
                     Text("Доступ к микрофону и распознаванию речи iOS спросит при первой голосовой записи. Речь по возможности распознаётся прямо на iPhone.")
                         .monoFont(.footnote)
@@ -253,7 +253,7 @@ struct OnboardingView: View {
                 Haptics.success()
                 settings.onboardingCompleted = true
             }
-            .buttonStyle(PrimaryButtonStyle(colors: [Color.mono.emerald, Color.mono.cyan]))
+            .buttonStyle(PrimaryButtonStyle())
         }
         .padding(.horizontal, 24)
         .padding(.top, 24)
@@ -264,7 +264,7 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 10) {
             Kicker(kicker)
             Text(title)
-                .font(.system(size: 34, weight: .semibold, design: .serif))
+                .font(.system(size: 34, weight: .semibold, design: .default))
                 .foregroundStyle(Color.mono.textPrimary)
             Text(text)
                 .monoFont(.callout)

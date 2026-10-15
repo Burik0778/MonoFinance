@@ -28,7 +28,7 @@ struct MoneyText: View {
     }
 }
 
-/// Крупная сумма для героя экрана: целая часть серифом, дробная часть и валюта — мельче и спокойнее.
+/// Крупная сумма для героя экрана: целая часть крупно, дробная часть и валюта — мельче и спокойнее.
 struct HeroAmount: View {
     let money: Money
     var token: FontToken = .hero
@@ -54,7 +54,7 @@ struct HeroAmount: View {
                 if let fraction = parts.fractionPart {
                     Text(verbatim: parts.decimalSeparator + fraction)
                         .monoFont(secondaryToken, digits: true)
-                        .foregroundStyle(Color.mono.textSecondary)
+                        .foregroundStyle(Color.mono.textTertiary)
                 }
                 if !parts.symbolLeading {
                     Text(verbatim: parts.symbol)
@@ -80,7 +80,7 @@ struct DeltaBadge: View {
 
     private var tint: Color {
         if delta.isZero { return Color.mono.textSecondary }
-        return delta.isPositive ? Color.mono.emerald : Color.mono.coral
+        return delta.isPositive ? Color.mono.positive : Color.mono.negative
     }
 
     var body: some View {

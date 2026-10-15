@@ -1,6 +1,8 @@
 import SwiftUI
 
 /// Плавающий док вместо стандартного таб-бара: четыре раздела и голосовая кнопка в центре — главный способ добавить операцию.
+/// Выбор раздела — акцентный значок и точка под ним; голосовая кнопка — сплошной акцент без свечений.
+/// Долгое нажатие на микрофон открывает ручной ввод и перевод.
 struct FloatingDock: View {
     @Binding var selection: AppTab
     let onVoice: () -> Void
@@ -18,18 +20,15 @@ struct FloatingDock: View {
             tab(.analytics)
             tab(.plans)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 6)
         .background {
-            Capsule(style: .continuous)
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(.ultraThinMaterial)
-                .overlay(Capsule(style: .continuous).fill(Color.mono.surface1.opacity(colorScheme == .dark ? 0.72 : 0.6)))
+                .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).fill(Color.mono.surface1.opacity(colorScheme == .dark ? 0.86 : 0.75)))
         }
-        .overlay(
-            Capsule(style: .continuous)
-                .strokeBorder(LinearGradient(colors: [Color.mono.rimTop, Color.mono.rimBottom], startPoint: .top, endPoint: .bottom), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0.45 : 0.12), radius: 24, x: 0, y: 12)
+        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Color.mono.strokeStrong, lineWidth: 1))
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.5 : 0.12), radius: 20, x: 0, y: 10)
         .padding(.horizontal, 16)
     }
 
@@ -40,7 +39,7 @@ struct FloatingDock: View {
             Haptics.selection()
             withMonoAnimation(.quick) { selection = tab }
         } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: 5) {
                 Image(systemName: tab.symbol)
                     .font(.system(size: 18, weight: selected ? .semibold : .regular))
                     .symbolEffect(.bounce, value: selected)
@@ -49,17 +48,19 @@ struct FloatingDock: View {
                     .monoFont(.caption)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
+                ZStack {
+                    if selected {
+                        Capsule()
+                            .fill(Color.mono.accent)
+                            .matchedGeometryEffect(id: "dock-selection", in: namespace)
+                    }
+                }
+                .frame(width: 16, height: 3)
             }
             .foregroundStyle(selected ? Color.mono.textPrimary : Color.mono.textTertiary)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 6)
-            .background {
-                if selected {
-                    Capsule(style: .continuous)
-                        .fill(Color.mono.surface3.opacity(0.9))
-                        .matchedGeometryEffect(id: "dock-selection", in: namespace)
-                }
-            }
+            .padding(.top, 8)
+            .padding(.bottom, 4)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -71,19 +72,15 @@ struct FloatingDock: View {
         Button(action: onVoice) {
             ZStack {
                 Circle()
-                    .fill(AngularGradient(colors: [Color.mono.electric, Color.mono.violet, Color.mono.cyan, Color.mono.electric], center: .center))
-                    .frame(width: 58, height: 58)
-                    .blur(radius: 10)
-                    .opacity(0.6)
-                Circle()
-                    .fill(LinearGradient(colors: [Color.mono.electric, Color.mono.violet], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .fill(Color.mono.accent)
                     .frame(width: 54, height: 54)
-                    .overlay(Circle().strokeBorder(.white.opacity(0.25), lineWidth: 1))
+                    .overlay(Circle().strokeBorder(.white.opacity(0.16), lineWidth: 1))
+                    .shadow(color: .black.opacity(0.35), radius: 8, x: 0, y: 4)
                 Image(systemName: "mic.fill")
                     .font(.system(size: 21, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.mono.onAccent)
             }
-            .frame(width: 64, height: 58)
+            .frame(width: 66, height: 58)
             .contentShape(Circle())
         }
         .buttonStyle(PressableStyle(scale: 0.9))

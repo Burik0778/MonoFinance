@@ -19,10 +19,10 @@ struct SecuritySettingsView: View {
         List {
             Section {
                 Toggle(isOn: Binding(get: { lockEnabled }, set: { value in Task { await setLock(value) } })) {
-                    FormRow(icon: lockSymbol, tint: Color.mono.electric, title: "Блокировка приложения",
+                    FormRow(icon: lockSymbol, tint: Color.mono.accent, title: "Блокировка приложения",
                             subtitle: Text(lock.canProtect ? "Face ID, Touch ID или код-пароль устройства" : "На устройстве не задан код-пароль"))
                 }
-                .tint(Color.mono.electric)
+                .tint(Color.mono.accent)
                 .disabled(working || !lock.canProtect)
                 if settings.appLockEnabled {
                     Picker(selection: $settings.lockTimeout) {
@@ -31,13 +31,13 @@ struct SecuritySettingsView: View {
                         Text("Через 5 минут").tag(LockTimeout.fiveMinutes)
                         Text("Через 15 минут").tag(LockTimeout.fifteenMinutes)
                     } label: {
-                        FormRow(icon: "timer", tint: Color.mono.steel, title: "Блокировать в фоне")
+                        FormRow(icon: "timer", tint: Color.mono.neutral, title: "Блокировать в фоне")
                     }
                 }
                 if let error = lock.lastError {
                     Text(verbatim: error)
                         .monoFont(.footnote)
-                        .foregroundStyle(Color.mono.coral)
+                        .foregroundStyle(Color.mono.negative)
                 }
             } header: {
                 Kicker("Вход")
@@ -46,15 +46,15 @@ struct SecuritySettingsView: View {
 
             Section {
                 Toggle(isOn: $settings.privacyShield) {
-                    FormRow(icon: "eye.slash.circle.fill", tint: Color.mono.violet, title: "Скрывать в переключателе",
+                    FormRow(icon: "eye.slash.circle.fill", tint: Color.mono.accent, title: "Скрывать в переключателе",
                             subtitle: Text("Суммы не попадают в снимок экрана при сворачивании"))
                 }
-                .tint(Color.mono.electric)
+                .tint(Color.mono.accent)
                 Toggle(isOn: $settings.hideAmountsOnLaunch) {
-                    FormRow(icon: "eye.trianglebadge.exclamationmark", tint: Color.mono.violet, title: "Скрывать суммы при запуске",
+                    FormRow(icon: "eye.trianglebadge.exclamationmark", tint: Color.mono.accent, title: "Скрывать суммы при запуске",
                             subtitle: Text("Показать — касанием глаза на главном экране"))
                 }
-                .tint(Color.mono.electric)
+                .tint(Color.mono.accent)
             } header: {
                 Kicker("Приватность")
             }
@@ -93,7 +93,7 @@ struct SecuritySettingsView: View {
     private func privacyLine(_ symbol: String, _ text: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: symbol)
-                .foregroundStyle(Color.mono.cyan)
+                .foregroundStyle(Color.mono.accentText)
                 .frame(width: 22)
             Text(text)
                 .monoFont(.footnote)
@@ -134,7 +134,7 @@ struct SpeechSettingsView: View {
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: settings.speechLanguage == language ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(settings.speechLanguage == language ? Color.mono.electric : Color.mono.textTertiary)
+                                .foregroundStyle(settings.speechLanguage == language ? Color.mono.accent : Color.mono.textTertiary)
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(verbatim: language.nativeName)
                                     .monoFont(.body)
@@ -157,15 +157,15 @@ struct SpeechSettingsView: View {
 
             Section {
                 Toggle(isOn: $settings.speechServerConsent) {
-                    FormRow(icon: "icloud.and.arrow.up", tint: Color.mono.sky, title: "Разрешить серверы Apple",
+                    FormRow(icon: "icloud.and.arrow.up", tint: Color.mono.textSecondary, title: "Разрешить серверы Apple",
                             subtitle: Text("Только если язык не распознаётся на устройстве. Аудио отправляется Apple для расшифровки; финансовые данные — нет."))
                 }
-                .tint(Color.mono.electric)
+                .tint(Color.mono.accent)
                 Toggle(isOn: $settings.autoStopOnSilence) {
-                    FormRow(icon: "waveform.path.badge.minus", tint: Color.mono.violet, title: "Останавливать по паузе",
+                    FormRow(icon: "waveform.path.badge.minus", tint: Color.mono.accent, title: "Останавливать по паузе",
                             subtitle: Text("Запись завершится, когда вы замолчите"))
                 }
-                .tint(Color.mono.electric)
+                .tint(Color.mono.accent)
             } header: {
                 Kicker("Обработка")
             }
@@ -227,11 +227,11 @@ struct SpeechSettingsView: View {
             if info.supportsOnDevice {
                 Label("На устройстве, без интернета", systemImage: "lock.iphone")
                     .monoFont(.caption)
-                    .foregroundStyle(Color.mono.emerald)
+                    .foregroundStyle(Color.mono.positive)
             } else if info.isSupported {
                 Label("Только через серверы Apple", systemImage: "icloud")
                     .monoFont(.caption)
-                    .foregroundStyle(Color.mono.tangerine)
+                    .foregroundStyle(Color.mono.warning)
             } else {
                 Label("Не поддерживается системой — ввод текстом", systemImage: "keyboard")
                     .monoFont(.caption)
@@ -250,13 +250,13 @@ struct SpeechSettingsView: View {
             Spacer()
             if granted {
                 Label("Разрешено", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(Color.mono.emerald)
+                    .foregroundStyle(Color.mono.positive)
             } else if undetermined {
                 Label("Спросим при первой записи", systemImage: "questionmark.circle")
                     .foregroundStyle(Color.mono.textTertiary)
             } else {
                 Label("Запрещено", systemImage: "xmark.circle.fill")
-                    .foregroundStyle(Color.mono.coral)
+                    .foregroundStyle(Color.mono.negative)
             }
         }
         .monoFont(.caption)
@@ -288,10 +288,10 @@ struct AISettingsView: View {
 
             Section {
                 Toggle(isOn: $settings.llmEnabled) {
-                    FormRow(icon: "server.rack", tint: Color.mono.magenta, title: "Пояснения внешней модели",
+                    FormRow(icon: "server.rack", tint: Color.mono.accent, title: "Пояснения внешней модели",
                             subtitle: Text("Через ваш собственный сервер (HTTPS)"))
                 }
-                .tint(Color.mono.magenta)
+                .tint(Color.mono.accent)
                 if settings.llmEnabled {
                     TextField("https://…", text: $settings.llmEndpoint)
                         .keyboardType(.URL)
@@ -301,7 +301,7 @@ struct AISettingsView: View {
                     if !settings.llmEndpoint.isEmpty && URL(string: settings.llmEndpoint)?.scheme != "https" {
                         Text("Адрес должен начинаться с https://")
                             .monoFont(.caption)
-                            .foregroundStyle(Color.mono.coral)
+                            .foregroundStyle(Color.mono.negative)
                     }
                     HStack {
                         SecureField("Токен доступа (необязательно)", text: $token)
@@ -320,7 +320,7 @@ struct AISettingsView: View {
                             .monoFont(.footnote)
                             .foregroundStyle(Color.mono.textSecondary)
                     }
-                    .tint(Color.mono.magenta)
+                    .tint(Color.mono.accent)
                 }
             } header: {
                 Kicker("Внешняя модель")
@@ -386,7 +386,7 @@ struct BankSyncView: View {
                             } label: {
                                 Label("Импортировать выписку", systemImage: "square.and.arrow.down")
                             }
-                            .buttonStyle(ChipStyle(isSelected: true, tint: Color.mono.sky))
+                            .buttonStyle(ChipStyle(isSelected: true, tint: Color.mono.textSecondary))
                         }
                     }
                     .padding(.vertical, 6)
@@ -406,7 +406,7 @@ struct BankSyncView: View {
                         Spacer()
                         Text(StatementAdapterRegistry.verifiedBanks.contains(bank) ? "Шаблон проверен" : "Автоопределение колонок")
                             .monoFont(.caption)
-                            .foregroundStyle(StatementAdapterRegistry.verifiedBanks.contains(bank) ? Color.mono.emerald : Color.mono.textTertiary)
+                            .foregroundStyle(StatementAdapterRegistry.verifiedBanks.contains(bank) ? Color.mono.positive : Color.mono.textTertiary)
                     }
                 }
             } header: {
@@ -436,11 +436,11 @@ struct BankSyncView: View {
         case .available:
             Label("Подключено", systemImage: "checkmark.circle.fill")
                 .monoFont(.caption)
-                .foregroundStyle(Color.mono.emerald)
+                .foregroundStyle(Color.mono.positive)
         case .unavailable:
             Text("Синхронизация недоступна")
                 .monoFont(.caption)
-                .foregroundStyle(Color.mono.tangerine)
+                .foregroundStyle(Color.mono.warning)
                 .multilineTextAlignment(.trailing)
                 .frame(maxWidth: 120, alignment: .trailing)
         }
@@ -473,7 +473,7 @@ struct AboutView: View {
             .padding(20)
         }
         .scrollIndicators(.hidden)
-        .background(AmbientBackground(tint: Color.mono.violet, secondary: Color.mono.cyan, intensity: 0.8))
+        .background(MonoBackdrop(haze: true))
         .navigationTitle(Text("О приложении"))
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -481,13 +481,13 @@ struct AboutView: View {
     private func aboutBlock(_ title: LocalizedStringKey, _ text: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: 14) {
             Capsule(style: .continuous)
-                .fill(LinearGradient(colors: [Color.mono.violet, Color.mono.cyan.opacity(0.2)], startPoint: .top, endPoint: .bottom))
+                .fill(LinearGradient(colors: [Color.mono.accent, Color.mono.accent.opacity(0.2)], startPoint: .top, endPoint: .bottom))
                 .frame(width: 3)
             VStack(alignment: .leading, spacing: 6) {
                 Text(title)
                     .textCase(.uppercase)
                     .monoFont(.kicker)
-                    .foregroundStyle(Color.mono.violet)
+                    .foregroundStyle(Color.mono.accentText)
                 Text(text)
                     .monoFont(.quote)
                     .foregroundStyle(Color.mono.textPrimary)

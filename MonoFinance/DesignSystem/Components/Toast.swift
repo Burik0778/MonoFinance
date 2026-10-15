@@ -5,7 +5,7 @@ struct ToastMessage: Identifiable {
     let id = UUID()
     let text: String
     var symbol: String = "checkmark.circle.fill"
-    var tint: Color = Color.mono.emerald
+    var tint: Color = Color.mono.positive
     var actionTitle: String?
     var action: (() -> Void)?
 }
@@ -55,7 +55,7 @@ struct ToastOverlay: View {
                         } label: {
                             Text(verbatim: title)
                                 .monoFont(.headline)
-                                .foregroundStyle(Color.mono.electric)
+                                .foregroundStyle(Color.mono.accentText)
                         }
                     }
                 }

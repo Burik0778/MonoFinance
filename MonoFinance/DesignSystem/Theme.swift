@@ -34,7 +34,8 @@ struct DynamicColor: Sendable {
     }
 }
 
-/// Палитра «Midnight Ledger».
+/// Палитра «Graphite»: графитовые поверхности, один акцент, сдержанная семантика.
+/// Правило: цвет несёт смысл. Акцент — действие и выбор; зелёный/красный — только знак суммы и статус.
 struct MonoColors {
     let background = MonoTokens.Palette.background.color
     let backgroundRaised = MonoTokens.Palette.backgroundRaised.color
@@ -43,32 +44,29 @@ struct MonoColors {
     let surface3 = MonoTokens.Palette.surface3.color
     let strokeSubtle = MonoTokens.Palette.strokeSubtle.color
     let strokeStrong = MonoTokens.Palette.strokeStrong.color
-    let rimTop = MonoTokens.Palette.rimTop.color
-    let rimBottom = MonoTokens.Palette.rimBottom.color
     let textPrimary = MonoTokens.Palette.textPrimary.color
     let textSecondary = MonoTokens.Palette.textSecondary.color
     let textTertiary = MonoTokens.Palette.textTertiary.color
-    let electric = MonoTokens.Palette.electric.color
-    let violet = MonoTokens.Palette.violet.color
-    let cyan = MonoTokens.Palette.cyan.color
-    let emerald = MonoTokens.Palette.emerald.color
-    let coral = MonoTokens.Palette.coral.color
-    let magenta = MonoTokens.Palette.magenta.color
-    let indigo = MonoTokens.Palette.indigo.color
-    let sky = MonoTokens.Palette.sky.color
-    let mint = MonoTokens.Palette.mint.color
-    let tangerine = MonoTokens.Palette.tangerine.color
-    let rose = MonoTokens.Palette.rose.color
-    let steel = MonoTokens.Palette.steel.color
+    /// Заливка основных кнопок, выбранное состояние, линия графика.
+    let accent = MonoTokens.Palette.accent.color
+    /// Акцент для текста и значков (ссылки «Все», активные иконки) — контрастнее на тёмном.
+    let accentText = MonoTokens.Palette.accentText.color
+    let onAccent = MonoTokens.Palette.onAccent.color
+    let positive = MonoTokens.Palette.positive.color
+    let negative = MonoTokens.Palette.negative.color
+    let warning = MonoTokens.Palette.warning.color
+    /// Нейтральная графика: «прочее», прошлый период, архив.
+    let neutral = MonoTokens.Palette.neutral.color
 
-    /// Семантика
-    var positive: Color { emerald }
-    var negative: Color { coral }
-    var warning: Color { tangerine }
-    var accent: Color { electric }
+    /// Мягкая подложка акцента (выбранный чип, фон значка действия).
+    var accentWash: Color { accent.opacity(0.16) }
 
-    /// Фирменный градиент голосового ввода.
-    var voiceGradient: [Color] { [electric, violet, cyan] }
+    /// Ступени акцента для категорий и серий в графиках (по рангу, а не по «цвету категории»).
+    func chart(_ index: Int) -> Color {
+        let ramp = MonoTokens.Chart.ramp
+        guard index >= 0 else { return neutral }
+        return ramp[min(index, ramp.count - 1)].color
+    }
 }
 
 extension Color {
@@ -81,25 +79,31 @@ extension ShapeStyle where Self == Color {
     static var monoTertiary: Color { Color.mono.textTertiary }
 }
 
+/// Цвет категории — приглушённый тон. Показывается только там, где пользователь выбирает или узнаёт категорию
+/// (редактор, список категорий, цели). В списках операций значки монохромные.
 extension CategoryColor {
-    var color: Color {
+    var color: Color { tone.color }
+
+    var tone: DynamicColor {
         switch self {
-        case .electric: return Color.mono.electric
-        case .violet: return Color.mono.violet
-        case .cyan: return Color.mono.cyan
-        case .emerald: return Color.mono.emerald
-        case .coral: return Color.mono.coral
-        case .magenta: return Color.mono.magenta
-        case .indigo: return Color.mono.indigo
-        case .sky: return Color.mono.sky
-        case .mint: return Color.mono.mint
-        case .tangerine: return Color.mono.tangerine
-        case .rose: return Color.mono.rose
-        case .steel: return Color.mono.steel
+        case .electric: return DynamicColor(dark: RGBA(134, 165, 232, 1), light: RGBA(46, 86, 180, 1))
+        case .violet: return DynamicColor(dark: RGBA(160, 150, 214, 1), light: RGBA(92, 78, 160, 1))
+        case .cyan: return DynamicColor(dark: RGBA(128, 178, 196, 1), light: RGBA(36, 110, 132, 1))
+        case .emerald: return DynamicColor(dark: RGBA(112, 182, 156, 1), light: RGBA(24, 116, 84, 1))
+        case .coral: return DynamicColor(dark: RGBA(214, 150, 142, 1), light: RGBA(160, 68, 60, 1))
+        case .magenta: return DynamicColor(dark: RGBA(192, 150, 196, 1), light: RGBA(128, 70, 132, 1))
+        case .indigo: return DynamicColor(dark: RGBA(146, 154, 216, 1), light: RGBA(70, 80, 160, 1))
+        case .sky: return DynamicColor(dark: RGBA(138, 172, 210, 1), light: RGBA(44, 100, 156, 1))
+        case .mint: return DynamicColor(dark: RGBA(134, 192, 174, 1), light: RGBA(30, 120, 98, 1))
+        case .tangerine: return DynamicColor(dark: RGBA(208, 170, 128, 1), light: RGBA(140, 92, 36, 1))
+        case .rose: return DynamicColor(dark: RGBA(206, 152, 170, 1), light: RGBA(150, 64, 96, 1))
+        case .steel: return DynamicColor(dark: RGBA(150, 162, 182, 1), light: RGBA(86, 98, 120, 1))
         }
     }
 }
 
+/// Материал виртуальной карты. Имена кейсов хранятся в базе, поэтому остаются прежними; меняется только вид:
+/// вместо кислотных градиентов — глубокие тёмные «металлы».
 extension CardSkin {
     var stops: [RGBA] {
         switch self {
@@ -114,13 +118,8 @@ extension CardSkin {
 
     var colors: [Color] { stops.map(\.color) }
 
-    /// Цвет счёта в графиках и полосе ликвидности.
-    var tint: Color {
-        switch self {
-        case .graphite: return Color.mono.steel
-        default: return stops[stops.count / 2].color
-        }
-    }
+    /// Цвет-метка счёта (миниатюры, точки в списках). Самая светлая ступень материала.
+    var tint: Color { stops[0].color }
 
     var linearGradient: LinearGradient {
         LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -128,12 +127,12 @@ extension CardSkin {
 
     var title: LocalizedStringKey {
         switch self {
-        case .aurora: return "Аврора"
-        case .nebula: return "Туманность"
-        case .glacier: return "Ледник"
-        case .lagoon: return "Лагуна"
+        case .aurora: return "Кобальт"
+        case .nebula: return "Слива"
+        case .glacier: return "Сталь"
+        case .lagoon: return "Хвоя"
         case .graphite: return "Графит"
-        case .ultraviolet: return "Ультрафиолет"
+        case .ultraviolet: return "Индиго"
         }
     }
 }
@@ -142,15 +141,15 @@ extension Account {
     var tint: Color { skin.tint }
 }
 
-/// Цвет суммы по знаку и типу операции.
+/// Цвет суммы по типу операции: доход и возврат — зелёным, остальное — нейтрально.
 extension TransactionKind {
     var tint: Color {
         switch self {
-        case .income, .refund: return Color.mono.emerald
+        case .income, .refund: return Color.mono.positive
         case .expense: return Color.mono.textPrimary
-        case .fee: return Color.mono.tangerine
-        case .transfer: return Color.mono.sky
-        case .adjustment: return Color.mono.steel
+        case .fee: return Color.mono.textPrimary
+        case .transfer: return Color.mono.textSecondary
+        case .adjustment: return Color.mono.textSecondary
         }
     }
 

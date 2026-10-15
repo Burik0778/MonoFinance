@@ -40,7 +40,7 @@ struct TransactionDetailView: View {
                         }
                     }
                     HeroAmount(money: signedAmount(item), token: .display, secondaryToken: .title2,
-                               color: item.kind == .income || item.kind == .refund ? Color.mono.emerald : Color.mono.textPrimary)
+                               color: item.kind == .income || item.kind == .refund ? Color.mono.positive : Color.mono.textPrimary)
                     if let counterAmount = item.counterAmount, counterAmount.currency != item.amount.currency {
                         HStack(spacing: 6) {
                             Image(systemName: "arrow.turn.down.right")
@@ -111,7 +111,7 @@ struct TransactionDetailView: View {
                         .buttonStyle(PrimaryButtonStyle())
                     }
                     Button("Удалить", role: .destructive) { confirmsDelete = true }
-                        .buttonStyle(SecondaryButtonStyle(tint: Color.mono.coral))
+                        .buttonStyle(SecondaryButtonStyle(tint: Color.mono.negative))
                 }
             }
             .padding(.horizontal, 20)
@@ -126,13 +126,13 @@ struct TransactionDetailView: View {
                 do {
                     try store.delete(item)
                     Haptics.warning()
-                    toasts.show(ToastMessage(text: String(localized: "Операция удалена"), symbol: "trash.fill", tint: Color.mono.coral,
+                    toasts.show(ToastMessage(text: String(localized: "Операция удалена"), symbol: "trash.fill", tint: Color.mono.negative,
                                              actionTitle: String(localized: "Вернуть")) {
                         try? store.restore([item] + fees)
                     })
                     dismiss()
                 } catch {
-                    toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.coral))
+                    toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.negative))
                 }
             }
         } message: {
@@ -207,9 +207,9 @@ private struct AuditRow: View {
 
     private var tint: Color {
         switch entry.change {
-        case .created: return Color.mono.emerald
-        case .updated: return Color.mono.electric
-        case .deleted: return Color.mono.coral
+        case .created: return Color.mono.positive
+        case .updated: return Color.mono.accent
+        case .deleted: return Color.mono.negative
         }
     }
 

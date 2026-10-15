@@ -151,8 +151,7 @@ struct AnalyticsView: View {
         }
         .scrollIndicators(.hidden)
         .defaultScrollAnchor(DebugFlags.scrollAnchor)
-        .background(AmbientBackground(tint: report.summary.net.isNegative ? Color.mono.coral : Color.mono.cyan,
-                                      secondary: Color.mono.violet, intensity: 0.8))
+        .background(MonoBackdrop(haze: true))
         .toolbar(.hidden, for: .navigationBar)
         .refreshable { store.reload() }
     }
@@ -167,7 +166,7 @@ struct AnalyticsView: View {
                     .accessibilityAddTraits(.isHeader)
             }
             Spacer()
-            IconButton(systemName: "sparkles", label: "Спросить MONO", tint: Color.mono.violet) {
+            IconButton(systemName: "sparkles", label: "Спросить MONO", tint: Color.mono.accent) {
                 router.present(.assistant)
             }
         }
@@ -232,7 +231,7 @@ struct MissingRatesNote: View {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(Color.mono.tangerine)
+                    .foregroundStyle(Color.mono.warning)
                 Text("Не учтены операции в \(currencies.map(\.code).sorted().joined(separator: ", ")): нет курса. Добавьте курс, чтобы итоги были полными.")
                     .monoFont(.footnote)
                     .foregroundStyle(Color.mono.textSecondary)
@@ -243,7 +242,7 @@ struct MissingRatesNote: View {
                     .foregroundStyle(Color.mono.textTertiary)
             }
             .padding(14)
-            .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.tangerine.opacity(0.1)))
+            .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.warning.opacity(0.1)))
         }
         .buttonStyle(PressableStyle(scale: 0.98))
     }

@@ -60,7 +60,7 @@ struct TransactionsView: View {
                             Button { router.present(.transaction(TransactionEditorContext(existingID: transaction.id, kind: transaction.kind))) } label: {
                                 Label("Изменить", systemImage: "pencil")
                             }
-                            .tint(Color.mono.electric)
+                            .tint(Color.mono.accent)
                         }
                         .swipeActions(edge: .leading) {
                             Button {
@@ -74,7 +74,7 @@ struct TransactionsView: View {
                             } label: {
                                 Label("Повторить", systemImage: "arrow.triangle.2.circlepath")
                             }
-                            .tint(Color.mono.violet)
+                            .tint(Color.mono.accent)
                         }
                     }
                 } header: {
@@ -148,7 +148,7 @@ struct TransactionsView: View {
                 Spacer()
                 VStack(alignment: .trailing, spacing: 4) {
                     Kicker("Доходы")
-                    MoneyText(money: month.income, token: .title2, sign: .always, color: Color.mono.emerald)
+                    MoneyText(money: month.income, token: .title2, sign: .always, color: Color.mono.positive)
                 }
             }
         }
@@ -173,7 +173,7 @@ struct TransactionsView: View {
                     } label: {
                         Label("Сбросить", systemImage: "xmark")
                     }
-                    .buttonStyle(ChipStyle(tint: Color.mono.coral))
+                    .buttonStyle(ChipStyle(tint: Color.mono.negative))
                 }
             }
         }
@@ -221,12 +221,12 @@ struct TransactionsView: View {
         do {
             try store.delete(transaction)
             Haptics.warning()
-            toasts.show(ToastMessage(text: String(localized: "Операция удалена"), symbol: "trash.fill", tint: Color.mono.coral,
+            toasts.show(ToastMessage(text: String(localized: "Операция удалена"), symbol: "trash.fill", tint: Color.mono.negative,
                                      actionTitle: String(localized: "Вернуть")) {
                 try? store.restore([transaction] + fees)
             })
         } catch {
-            toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.coral))
+            toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.negative))
         }
         pendingDelete = nil
     }

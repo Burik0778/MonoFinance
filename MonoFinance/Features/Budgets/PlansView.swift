@@ -37,9 +37,9 @@ struct PlansView: View {
                         } label: {
                             Image(systemName: "plus")
                                 .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(Color.mono.electric)
+                                .foregroundStyle(Color.mono.accentText)
                                 .frame(width: 36, height: 36)
-                                .background(Circle().fill(Color.mono.electric.opacity(0.12)))
+                                .background(Circle().fill(Color.mono.accent.opacity(0.12)))
                         }
                         .accessibilityLabel(Text("Новый бюджет"))
                     }
@@ -75,16 +75,16 @@ struct PlansView: View {
         }
         .scrollIndicators(.hidden)
         .defaultScrollAnchor(DebugFlags.scrollAnchor)
-        .background(AmbientBackground(tint: tint(overall), secondary: Color.mono.violet, intensity: 0.8))
+        .background(MonoBackdrop(haze: true))
         .toolbar(.hidden, for: .navigationBar)
     }
 
     private func tint(_ status: BudgetStatus?) -> Color {
-        guard let status else { return Color.mono.violet }
+        guard let status else { return Color.mono.accent }
         switch status.state {
-        case .ok: return Color.mono.emerald
-        case .warning: return Color.mono.tangerine
-        case .exceeded: return Color.mono.coral
+        case .ok: return Color.mono.positive
+        case .warning: return Color.mono.warning
+        case .exceeded: return Color.mono.negative
         }
     }
 }
@@ -92,9 +92,9 @@ struct PlansView: View {
 extension BudgetStatus.State {
     var tint: Color {
         switch self {
-        case .ok: return Color.mono.emerald
-        case .warning: return Color.mono.tangerine
-        case .exceeded: return Color.mono.coral
+        case .ok: return Color.mono.positive
+        case .warning: return Color.mono.warning
+        case .exceeded: return Color.mono.negative
         }
     }
 }
@@ -117,7 +117,7 @@ private struct MonthLimitCard: View {
                         ProgressRing(progress: status.progress, tint: status.state.tint, lineWidth: 12)
                         VStack(spacing: 0) {
                             Text(verbatim: PercentFormatting.string(min(status.progress, 9.99), language: language))
-                                .font(.system(size: 22, weight: .semibold, design: .serif).monospacedDigit())
+                                .font(.system(size: 22, weight: .semibold, design: .default).monospacedDigit())
                                 .foregroundStyle(Color.mono.textPrimary)
                             Text("лимита")
                                 .monoFont(.caption)
@@ -131,8 +131,8 @@ private struct MonthLimitCard: View {
                         if status.remaining.isNegative {
                             Text("Превышен на")
                                 .monoFont(.footnote)
-                                .foregroundStyle(Color.mono.coral)
-                            MoneyText(money: status.remaining.magnitude, token: .title2, color: Color.mono.coral, compact: true)
+                                .foregroundStyle(Color.mono.negative)
+                            MoneyText(money: status.remaining.magnitude, token: .title2, color: Color.mono.negative, compact: true)
                         } else {
                             Text("Осталось")
                                 .monoFont(.footnote)
@@ -149,11 +149,11 @@ private struct MonthLimitCard: View {
                         if let daily = status.dailyAllowance {
                             HStack(spacing: 4) {
                                 Image(systemName: "calendar.badge.clock")
-                                MoneyText(money: daily, token: .caption, color: Color.mono.cyan, compact: true)
+                                MoneyText(money: daily, token: .caption, color: Color.mono.accent, compact: true)
                                 Text("в день")
                             }
                             .monoFont(.caption)
-                            .foregroundStyle(Color.mono.cyan)
+                            .foregroundStyle(Color.mono.accentText)
                         }
                     }
                     Spacer(minLength: 0)
@@ -199,7 +199,7 @@ private struct BudgetRow: View {
                     if status.budget.rolloverEnabled {
                         Image(systemName: "arrow.uturn.forward.circle")
                             .font(.system(size: 12))
-                            .foregroundStyle(Color.mono.violet)
+                            .foregroundStyle(Color.mono.accentText)
                             .accessibilityLabel(Text("С переносом остатка"))
                     }
                     Spacer(minLength: 8)
@@ -215,14 +215,14 @@ private struct BudgetRow: View {
                     Spacer(minLength: 8)
                     if status.remaining.isNegative {
                         Text("Превышение")
-                        MoneyText(money: status.remaining.magnitude, token: .caption, color: Color.mono.coral, compact: true)
+                        MoneyText(money: status.remaining.magnitude, token: .caption, color: Color.mono.negative, compact: true)
                     } else if let daily = status.dailyAllowance {
                         MoneyText(money: daily, token: .caption, color: Color.mono.textSecondary, compact: true)
                         Text("в день")
                     }
                 }
                 .monoFont(.caption)
-                .foregroundStyle(status.remaining.isNegative ? Color.mono.coral : Color.mono.textTertiary)
+                .foregroundStyle(status.remaining.isNegative ? Color.mono.negative : Color.mono.textTertiary)
             }
         }
         .padding(.vertical, 8)
@@ -244,9 +244,9 @@ private struct GoalsSection: View {
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Color.mono.violet)
+                        .foregroundStyle(Color.mono.accentText)
                         .frame(width: 36, height: 36)
-                        .background(Circle().fill(Color.mono.violet.opacity(0.12)))
+                        .background(Circle().fill(Color.mono.accent.opacity(0.12)))
                 }
                 .accessibilityLabel(Text("Новая цель"))
             }
@@ -309,7 +309,7 @@ private struct GoalTile: View {
                 Spacer()
                 if status.isCompleted {
                     Image(systemName: "checkmark.seal.fill")
-                        .foregroundStyle(Color.mono.emerald)
+                        .foregroundStyle(Color.mono.positive)
                 } else {
                     Text(verbatim: PercentFormatting.string(status.progress, language: language))
                         .monoFont(.caption, digits: true)
@@ -369,9 +369,9 @@ private struct PlannedSection: View {
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Color.mono.tangerine)
+                        .foregroundStyle(Color.mono.warning)
                         .frame(width: 36, height: 36)
-                        .background(Circle().fill(Color.mono.tangerine.opacity(0.12)))
+                        .background(Circle().fill(Color.mono.warning.opacity(0.12)))
                 }
                 .accessibilityLabel(Text("Запланировать трату"))
             }
@@ -402,7 +402,7 @@ private struct PlannedSection: View {
                                             .foregroundStyle(Color.mono.textPrimary)
                                         Text(verbatim: DateFormatting.dayTitle(item.date, now: now, calendar: store.periods.calendar, language: language))
                                             .monoFont(.caption)
-                                            .foregroundStyle(item.date < now ? Color.mono.coral : Color.mono.textTertiary)
+                                            .foregroundStyle(item.date < now ? Color.mono.negative : Color.mono.textTertiary)
                                     }
                                     Spacer()
                                     MoneyText(money: item.amount, token: .amountRow, compact: true)
@@ -429,7 +429,7 @@ private struct PlannedSection: View {
                 try? store.savePlanned(item)
             })
         } catch {
-            toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.coral))
+            toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.negative))
         }
     }
 }
@@ -448,7 +448,7 @@ private struct RecurringSummary: View {
             SectionHeader(kicker: "Регулярные", title: "Платежи и поступления") {
                 Button("Все") { router.open(.recurringList) }
                     .monoFont(.subhead)
-                    .foregroundStyle(Color.mono.electric)
+                    .foregroundStyle(Color.mono.accentText)
             }
             if active.isEmpty {
                 Button {
@@ -493,11 +493,11 @@ struct RecurringRuleRow: View {
                 Text(verbatim: "\(frequencyText) · \(DateFormatting.dayTitle(rule.nextDueDate, now: now, calendar: store.periods.calendar, language: language))")
                     .lineLimit(2)
                     .monoFont(.caption)
-                .foregroundStyle(rule.nextDueDate < now && rule.isActive ? Color.mono.tangerine : Color.mono.textTertiary)
+                .foregroundStyle(rule.nextDueDate < now && rule.isActive ? Color.mono.warning : Color.mono.textTertiary)
             }
             Spacer(minLength: 8)
             MoneyText(money: rule.kind == .income ? rule.amount : rule.amount.negated, token: .amountRow,
-                      color: rule.kind == .income ? Color.mono.emerald : Color.mono.textPrimary, compact: true)
+                      color: rule.kind == .income ? Color.mono.positive : Color.mono.textPrimary, compact: true)
         }
         .padding(.vertical, 8)
         .contentShape(Rectangle())

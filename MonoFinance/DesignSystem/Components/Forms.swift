@@ -5,7 +5,6 @@ import MonoCore
 struct EditorScaffold<Content: View>: View {
     let title: LocalizedStringKey
     var saveTitle: LocalizedStringKey = "Сохранить"
-    var saveColors: [Color] = [Color.mono.electric, Color.mono.violet]
     var canSave = true
     var error: String?
     let onSave: () -> Void
@@ -22,7 +21,7 @@ struct EditorScaffold<Content: View>: View {
                         if let error {
                             Label { Text(verbatim: error) } icon: { Image(systemName: "exclamationmark.circle.fill") }
                                 .monoFont(.footnote)
-                                .foregroundStyle(Color.mono.coral)
+                                .foregroundStyle(Color.mono.negative)
                                 .transition(.opacity)
                         }
                     }
@@ -34,7 +33,7 @@ struct EditorScaffold<Content: View>: View {
                 .scrollDismissesKeyboard(.interactively)
 
                 Button(saveTitle, action: onSave)
-                    .buttonStyle(PrimaryButtonStyle(colors: saveColors))
+                    .buttonStyle(PrimaryButtonStyle())
                     .disabled(!canSave)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
@@ -102,7 +101,7 @@ struct AmountField: View {
             TextField(placeholder, text: $text)
                 .keyboardType(currency.minorUnitDigits > 0 ? .decimalPad : .numberPad)
                 .focused($focused)
-                .font(.system(size: 40, weight: .semibold, design: .serif).monospacedDigit())
+                .font(.system(size: 40, weight: .semibold, design: .default).monospacedDigit())
                 .foregroundStyle(tint)
                 .minimumScaleFactor(0.5)
             Text(verbatim: formatter.symbol(for: currency).text)
@@ -114,7 +113,7 @@ struct AmountField: View {
         .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.lg, style: .continuous).fill(Color.mono.surface2))
         .overlay(
             RoundedRectangle(cornerRadius: MonoTokens.Radius.lg, style: .continuous)
-                .strokeBorder(focused ? Color.mono.electric.opacity(0.6) : Color.mono.strokeSubtle, lineWidth: 1)
+                .strokeBorder(focused ? Color.mono.accent.opacity(0.8) : Color.mono.strokeSubtle, lineWidth: 1)
         )
         .contentShape(Rectangle())
         .onTapGesture { focused = true }
@@ -126,7 +125,7 @@ struct ToggleRow: View {
     let title: LocalizedStringKey
     var subtitle: LocalizedStringKey?
     @Binding var isOn: Bool
-    var tint: Color = Color.mono.electric
+    var tint: Color = Color.mono.accent
 
     var body: some View {
         Toggle(isOn: $isOn) {
@@ -161,7 +160,7 @@ struct ColorSwatchPicker: View {
                     withMonoAnimation(.quick) { selection = option }
                 } label: {
                     Circle()
-                        .fill(option.color.gradient)
+                        .fill(option.color)
                         .frame(height: 36)
                         .overlay {
                             if selection == option {
@@ -181,7 +180,7 @@ struct ColorSwatchPicker: View {
 struct SymbolPicker: View {
     @Binding var selection: String
     let symbols: [String]
-    var tint: Color = Color.mono.electric
+    var tint: Color = Color.mono.accent
 
     var body: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 46), spacing: 8)], spacing: 8) {
@@ -193,9 +192,9 @@ struct SymbolPicker: View {
                 } label: {
                     Image(systemName: symbol)
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(selected ? Color.white : tint)
+                        .foregroundStyle(selected ? Color.mono.onAccent : Color.mono.textSecondary)
                         .frame(width: 46, height: 46)
-                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(selected ? tint : tint.opacity(0.12)))
+                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(selected ? Color.mono.accent : Color.mono.surface2))
                 }
                 .buttonStyle(PressableStyle(scale: 0.9))
                 .accessibilityAddTraits(selected ? .isSelected : [])
@@ -238,7 +237,7 @@ struct CategoryGridPicker: View {
     var body: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 78), spacing: 8)], spacing: 8) {
             if allowsNone {
-                cell(id: nil, icon: "circle.dashed", color: Color.mono.steel, name: String(localized: "Без категории"))
+                cell(id: nil, icon: "circle.dashed", color: Color.mono.neutral, name: String(localized: "Без категории"))
             }
             ForEach(categories) { category in
                 cell(id: category.id, icon: category.icon, color: category.color.color, name: category.name)
@@ -253,8 +252,7 @@ struct CategoryGridPicker: View {
             withMonoAnimation(.quick) { selection = id }
         } label: {
             VStack(spacing: 6) {
-                CategoryGlyph(icon: icon, color: selected ? .white : color, size: 38)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(selected ? color : Color.clear))
+                CategoryGlyph(icon: icon, color: color, size: 40, isSelected: selected)
                 Text(verbatim: name)
                     .monoFont(.caption)
                     .foregroundStyle(selected ? Color.mono.textPrimary : Color.mono.textSecondary)
@@ -264,7 +262,8 @@ struct CategoryGridPicker: View {
             }
             .frame(maxWidth: .infinity, minHeight: 84, alignment: .top)
             .padding(.vertical, 6)
-            .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.sm, style: .continuous).fill(selected ? color.opacity(0.14) : Color.clear))
+            .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.sm, style: .continuous).fill(selected ? Color.mono.accentWash : Color.clear))
+            .overlay(RoundedRectangle(cornerRadius: MonoTokens.Radius.sm, style: .continuous).strokeBorder(selected ? Color.mono.accent.opacity(0.5) : Color.clear, lineWidth: 1))
         }
         .buttonStyle(PressableStyle())
         .accessibilityLabel(Text(verbatim: name))

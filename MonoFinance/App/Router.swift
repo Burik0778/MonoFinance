@@ -21,9 +21,9 @@ enum AppTab: String, Hashable, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
-        case .overview: return "circle.hexagongrid.fill"
+        case .overview: return "house.fill"
         case .transactions: return "list.bullet.rectangle.portrait.fill"
-        case .analytics: return "chart.xyaxis.line"
+        case .analytics: return "chart.bar.fill"
         case .plans: return "target"
         }
     }

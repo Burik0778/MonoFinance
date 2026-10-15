@@ -28,7 +28,7 @@ struct VoiceDraftCard: View {
     private var account: Account? { draft.accountID.flatMap { store.accountMap[$0] } }
     private var destination: Account? { draft.counterAccountID.flatMap { store.accountMap[$0] } }
     private var category: FinanceCategory? { draft.categoryID.flatMap { store.categoryMap[$0] } }
-    private var statusTint: Color { draft.isReady ? Color.mono.emerald : Color.mono.tangerine }
+    private var statusTint: Color { draft.isReady ? Color.mono.positive : Color.mono.warning }
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
@@ -58,7 +58,7 @@ struct VoiceDraftCard: View {
         .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.xl, style: .continuous).fill(Color.mono.surface1))
         .overlay(
             RoundedRectangle(cornerRadius: MonoTokens.Radius.xl, style: .continuous)
-                .strokeBorder(draft.isReady ? Color.mono.strokeSubtle : Color.mono.tangerine.opacity(0.35), lineWidth: 1)
+                .strokeBorder(draft.isReady ? Color.mono.strokeSubtle : Color.mono.warning.opacity(0.35), lineWidth: 1)
         )
         .monoAnimation(.standard, value: draft)
         .onAppear(perform: syncTexts)
@@ -113,7 +113,7 @@ struct VoiceDraftCard: View {
     }
 
     private var kindTint: Color {
-        draft.kind == .expense ? Color.mono.electric : draft.kind.tint
+        draft.kind == .expense ? Color.mono.accent : draft.kind.tint
     }
 
     // MARK: - Сумма
@@ -125,7 +125,7 @@ struct VoiceDraftCard: View {
                     TextField("0", text: $amountText)
                         .keyboardType(.decimalPad)
                         .focused($focus, equals: .amount)
-                        .font(.system(size: 38, weight: .semibold, design: .serif).monospacedDigit())
+                        .font(.system(size: 38, weight: .semibold, design: .default).monospacedDigit())
                         .foregroundStyle(Color.mono.textPrimary)
                         .onSubmit(commitAmount)
                     Text(verbatim: formatter.symbol(for: draft.currency).text)
@@ -144,7 +144,7 @@ struct VoiceDraftCard: View {
                 } label: {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         HeroAmount(money: money, token: .display, secondaryToken: .title2,
-                                   color: draft.kind == .income || draft.kind == .refund ? Color.mono.emerald : Color.mono.textPrimary)
+                                   color: draft.kind == .income || draft.kind == .refund ? Color.mono.positive : Color.mono.textPrimary)
                         Image(systemName: "pencil")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(Color.mono.textTertiary)
@@ -177,7 +177,7 @@ struct VoiceDraftCard: View {
                 ForEach(blocking, id: \.self) { issue in
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Circle().fill(Color.mono.tangerine).frame(width: 6, height: 6)
+                            Circle().fill(Color.mono.warning).frame(width: 6, height: 6)
                             Text(verbatim: issue.message(language, formatter: formatter, currency: draft.currency))
                                 .monoFont(.callout)
                                 .foregroundStyle(Color.mono.textPrimary)
@@ -188,7 +188,7 @@ struct VoiceDraftCard: View {
                 }
             }
             .padding(12)
-            .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.tangerine.opacity(0.08)))
+            .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.warning.opacity(0.08)))
         }
     }
 
@@ -202,7 +202,7 @@ struct VoiceDraftCard: View {
                         mutate { $0.setAmount(suggested, accounts: store.accountMap, converter: store.converter) }
                         Haptics.selection()
                     }
-                    .buttonStyle(ChipStyle(isSelected: true, tint: Color.mono.electric))
+                    .buttonStyle(ChipStyle(isSelected: true, tint: Color.mono.accent))
                 }
                 if let amount = draft.amount, let money = Money(major: amount, currency: draft.currency) {
                     Button(String(localized: "Нет, \(formatter.string(money))")) {
@@ -242,7 +242,7 @@ struct VoiceDraftCard: View {
                         editingAmount = true
                         focus = .amount
                     }
-                    .buttonStyle(ChipStyle(tint: Color.mono.violet))
+                    .buttonStyle(ChipStyle(tint: Color.mono.accent))
                 }
             }
         case .accountNotFound, .missingAccount:
@@ -274,7 +274,7 @@ struct VoiceDraftCard: View {
                         counterText = formatter.editableString(money)
                         commitCounter()
                     }
-                    .buttonStyle(ChipStyle(tint: Color.mono.violet))
+                    .buttonStyle(ChipStyle(tint: Color.mono.accent))
                 }
             }
         default:
@@ -367,7 +367,7 @@ struct VoiceDraftCard: View {
                 DatePicker("", selection: Binding(get: { draft.date }, set: { value in mutate { $0.date = value } }),
                            in: ...Date().addingTimeInterval(86_400), displayedComponents: [.date])
                     .labelsHidden()
-                    .tint(Color.mono.electric)
+                    .tint(Color.mono.accent)
             } note: { EmptyView() }
         }
     }
@@ -390,7 +390,7 @@ struct VoiceDraftCard: View {
     private func noteBadge(_ text: LocalizedStringKey) -> some View {
         Text(text)
             .monoFont(.caption)
-            .foregroundStyle(Color.mono.violet)
+            .foregroundStyle(Color.mono.accentText)
     }
 
     private func accountMenu(selected: Account?, excluding: UUID?, action: @escaping (Account) -> Void) -> some View {
@@ -415,7 +415,7 @@ struct VoiceDraftCard: View {
                 } else {
                     Text("Выбрать")
                         .monoFont(.callout)
-                        .foregroundStyle(Color.mono.electric)
+                        .foregroundStyle(Color.mono.accentText)
                 }
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.system(size: 10, weight: .semibold))
@@ -450,7 +450,7 @@ struct VoiceDraftCard: View {
                 } else {
                     Text("Выбрать")
                         .monoFont(.callout)
-                        .foregroundStyle(Color.mono.electric)
+                        .foregroundStyle(Color.mono.accentText)
                 }
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.system(size: 10, weight: .semibold))

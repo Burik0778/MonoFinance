@@ -18,21 +18,21 @@ struct SettingsView: View {
         List {
             Section {
                 NavigationLink(value: Route.accounts) {
-                    FormRow(icon: "creditcard.fill", tint: Color.mono.electric, title: "Счета",
+                    FormRow(icon: "creditcard.fill", tint: Color.mono.accent, title: "Счета",
                             subtitle: Text("\(store.activeAccounts.count) активных"))
                 }
                 NavigationLink(value: Route.categories) {
-                    FormRow(icon: "square.grid.2x2.fill", tint: Color.mono.violet, title: "Категории")
+                    FormRow(icon: "square.grid.2x2.fill", tint: Color.mono.accent, title: "Категории")
                 }
                 NavigationLink(value: Route.recurringList) {
-                    FormRow(icon: "repeat", tint: Color.mono.cyan, title: "Регулярные платежи")
+                    FormRow(icon: "repeat", tint: Color.mono.accent, title: "Регулярные платежи")
                 }
                 Menu {
                     ForEach(baseCurrencyOptions, id: \.self) { currency in
                         Button(currency.code) { setBase(currency) }
                     }
                 } label: {
-                    FormRow(icon: "dollarsign.circle.fill", tint: Color.mono.emerald, title: "Основная валюта",
+                    FormRow(icon: "dollarsign.circle.fill", tint: Color.mono.positive, title: "Основная валюта",
                             subtitle: Text("Итоги и аналитика пересчитываются в неё")) {
                         Text(verbatim: store.baseCurrency.code)
                             .monoFont(.headline)
@@ -45,7 +45,7 @@ struct SettingsView: View {
                         Button(account.displayName) { try? store.setDefaultAccount(account) }
                     }
                 } label: {
-                    FormRow(icon: "star.circle.fill", tint: Color.mono.tangerine, title: "Счёт по умолчанию",
+                    FormRow(icon: "star.circle.fill", tint: Color.mono.warning, title: "Счёт по умолчанию",
                             subtitle: Text("Для голосового ввода, если счёт не назван")) {
                         Text(verbatim: store.defaultAccount?.displayName ?? "—")
                             .monoFont(.subhead)
@@ -61,11 +61,11 @@ struct SettingsView: View {
 
             Section {
                 NavigationLink(value: Route.speechSettings) {
-                    FormRow(icon: "waveform", tint: Color.mono.violet, title: "Голосовой ввод",
+                    FormRow(icon: "waveform", tint: Color.mono.accent, title: "Голосовой ввод",
                             subtitle: Text(verbatim: settings.speechLanguage.nativeName))
                 }
                 NavigationLink(value: Route.aiSettings) {
-                    FormRow(icon: "sparkles", tint: Color.mono.magenta, title: "Ассистент и ИИ",
+                    FormRow(icon: "sparkles", tint: Color.mono.accent, title: "Ассистент и ИИ",
                             subtitle: settings.llmEnabled && settings.llmConsent ? Text("Внешняя модель подключена") : Text("Только на устройстве"))
                 }
             } header: {
@@ -77,16 +77,16 @@ struct SettingsView: View {
                 Button {
                     router.present(.importStatement(nil))
                 } label: {
-                    FormRow(icon: "square.and.arrow.down.on.square.fill", tint: Color.mono.sky, title: "Импорт выписки",
+                    FormRow(icon: "square.and.arrow.down.on.square.fill", tint: Color.mono.textSecondary, title: "Импорт выписки",
                             subtitle: Text(verbatim: "CSV · XLSX"))
                 }
                 .buttonStyle(.plain)
                 NavigationLink(value: Route.bankSync) {
-                    FormRow(icon: "building.columns.fill", tint: Color.mono.indigo, title: "Банки",
+                    FormRow(icon: "building.columns.fill", tint: Color.mono.accent, title: "Банки",
                             subtitle: Text("Статус подключений"))
                 }
                 NavigationLink(value: Route.exchangeRates) {
-                    FormRow(icon: "arrow.left.arrow.right.circle.fill", tint: Color.mono.emerald, title: "Курсы валют",
+                    FormRow(icon: "arrow.left.arrow.right.circle.fill", tint: Color.mono.positive, title: "Курсы валют",
                             subtitle: ratesSubtitle)
                 }
             } header: {
@@ -96,15 +96,15 @@ struct SettingsView: View {
 
             Section {
                 NavigationLink(value: Route.securitySettings) {
-                    FormRow(icon: "lock.shield.fill", tint: Color.mono.electric, title: "Приватность и защита",
+                    FormRow(icon: "lock.shield.fill", tint: Color.mono.accent, title: "Приватность и защита",
                             subtitle: settings.appLockEnabled ? Text("Блокировка включена") : Text("Блокировка выключена"))
                 }
                 Toggle(isOn: Binding(get: { settings.remindersEnabled }, set: { value in Task { await setReminders(value) } })) {
-                    FormRow(icon: "bell.badge.fill", tint: Color.mono.tangerine, title: "Напоминания о платежах")
+                    FormRow(icon: "bell.badge.fill", tint: Color.mono.warning, title: "Напоминания о платежах")
                 }
-                .tint(Color.mono.electric)
+                .tint(Color.mono.accent)
                 NavigationLink(value: Route.backup) {
-                    FormRow(icon: "externaldrive.fill.badge.checkmark", tint: Color.mono.cyan, title: "Резервные копии и экспорт")
+                    FormRow(icon: "externaldrive.fill.badge.checkmark", tint: Color.mono.accent, title: "Резервные копии и экспорт")
                 }
             } header: {
                 Kicker("Безопасность")
@@ -117,12 +117,12 @@ struct SettingsView: View {
                     Text("Светлая").tag(Appearance.light)
                     Text("Как в системе").tag(Appearance.system)
                 } label: {
-                    FormRow(icon: "circle.lefthalf.filled", tint: Color.mono.steel, title: "Тема")
+                    FormRow(icon: "circle.lefthalf.filled", tint: Color.mono.neutral, title: "Тема")
                 }
                 Toggle(isOn: $settings.haptics) {
-                    FormRow(icon: "hand.tap.fill", tint: Color.mono.steel, title: "Тактильный отклик")
+                    FormRow(icon: "hand.tap.fill", tint: Color.mono.neutral, title: "Тактильный отклик")
                 }
-                .tint(Color.mono.electric)
+                .tint(Color.mono.accent)
             } header: {
                 Kicker("Оформление")
             }
@@ -130,12 +130,12 @@ struct SettingsView: View {
 
             Section {
                 Toggle(isOn: Binding(get: { store.isDemo }, set: { _ in confirmsDemo = true })) {
-                    FormRow(icon: "theatermasks.fill", tint: Color.mono.magenta, title: "Демо-режим",
+                    FormRow(icon: "theatermasks.fill", tint: Color.mono.accent, title: "Демо-режим",
                             subtitle: Text("Отдельная база с примером данных. Ваши данные не затрагиваются."))
                 }
-                .tint(Color.mono.magenta)
+                .tint(Color.mono.accent)
                 NavigationLink(value: Route.about) {
-                    FormRow(icon: "info.circle.fill", tint: Color.mono.steel, title: "О приложении")
+                    FormRow(icon: "info.circle.fill", tint: Color.mono.neutral, title: "О приложении")
                 }
             } footer: {
                 Text(verbatim: "MONO \(Bundle.main.shortVersion)")
@@ -177,10 +177,10 @@ struct SettingsView: View {
             try store.setBaseCurrency(currency)
             if currency != .uzs {
                 toasts.show(ToastMessage(text: String(localized: "Курсы ЦБ даются к суму. Для другой основной валюты добавьте курсы вручную."),
-                                         symbol: "info.circle.fill", tint: Color.mono.cyan), duration: .seconds(6))
+                                         symbol: "info.circle.fill", tint: Color.mono.accent), duration: .seconds(6))
             }
         } catch {
-            toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.coral))
+            toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.negative))
         }
     }
 
@@ -189,7 +189,7 @@ struct SettingsView: View {
             let granted = await NotificationService.requestAuthorization()
             guard granted else {
                 settings.remindersEnabled = false
-                toasts.show(ToastMessage(text: String(localized: "Уведомления запрещены в настройках iOS."), symbol: "bell.slash.fill", tint: Color.mono.tangerine))
+                toasts.show(ToastMessage(text: String(localized: "Уведомления запрещены в настройках iOS."), symbol: "bell.slash.fill", tint: Color.mono.warning))
                 return
             }
         }

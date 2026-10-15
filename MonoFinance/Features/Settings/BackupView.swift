@@ -35,7 +35,7 @@ struct BackupView: View {
                 Section {
                     Label("Сейчас открыт демо-режим: копия будет содержать демонстрационные данные.", systemImage: "theatermasks.fill")
                         .monoFont(.footnote)
-                        .foregroundStyle(Color.mono.magenta)
+                        .foregroundStyle(Color.mono.accentText)
                 }
                 .listRowBackground(Color.mono.surface1)
             }
@@ -50,7 +50,7 @@ struct BackupView: View {
                 if let problem = passwordProblem {
                     Text(verbatim: problem)
                         .monoFont(.caption)
-                        .foregroundStyle(Color.mono.coral)
+                        .foregroundStyle(Color.mono.negative)
                 }
                 Button {
                     Task { await createBackup() }
@@ -120,12 +120,12 @@ struct BackupView: View {
                     if integrity.isEmpty {
                         Label("Ошибок не найдено", systemImage: "checkmark.seal.fill")
                             .monoFont(.footnote)
-                            .foregroundStyle(Color.mono.emerald)
+                            .foregroundStyle(Color.mono.positive)
                     } else {
                         ForEach(integrity, id: \.self) { issue in
                             Label { Text(verbatim: issue) } icon: { Image(systemName: "exclamationmark.triangle.fill") }
                                 .monoFont(.footnote)
-                                .foregroundStyle(Color.mono.tangerine)
+                                .foregroundStyle(Color.mono.warning)
                         }
                     }
                 }
@@ -138,7 +138,7 @@ struct BackupView: View {
                 Section {
                     Text(verbatim: error)
                         .monoFont(.footnote)
-                        .foregroundStyle(Color.mono.coral)
+                        .foregroundStyle(Color.mono.negative)
                 }
                 .listRowBackground(Color.mono.surface1)
             }

@@ -14,7 +14,7 @@ struct TransactionRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            CategoryGlyph(category: category, kind: transaction.kind, size: 42)
+            CategoryGlyph(category: category, kind: transaction.kind, size: 40)
             VStack(alignment: .leading, spacing: 3) {
                 Text(verbatim: title)
                     .monoFont(.body)
@@ -24,12 +24,12 @@ struct TransactionRow: View {
                     if transaction.source == .voice {
                         Image(systemName: "waveform")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(Color.mono.violet)
+                            .foregroundStyle(Color.mono.accentText)
                             .accessibilityLabel(Text("Голосовой ввод"))
                     } else if transaction.source == .importFile {
                         Image(systemName: "tray.and.arrow.down.fill")
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(Color.mono.cyan)
+                            .foregroundStyle(Color.mono.textTertiary)
                             .accessibilityLabel(Text("Импорт"))
                     }
                     Text(verbatim: subtitle)
@@ -48,7 +48,7 @@ struct TransactionRow: View {
                 }
             }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
@@ -98,11 +98,11 @@ struct TransactionRow: View {
 
     private var amountColor: Color {
         switch transaction.kind {
-        case .income, .refund: return Color.mono.emerald
+        case .income, .refund: return Color.mono.positive
         case .expense: return Color.mono.textPrimary
-        case .fee: return Color.mono.tangerine
-        case .transfer: return Color.mono.sky
-        case .adjustment: return Color.mono.steel
+        case .fee: return Color.mono.textPrimary
+        case .transfer: return Color.mono.textSecondary
+        case .adjustment: return Color.mono.textSecondary
         }
     }
 }

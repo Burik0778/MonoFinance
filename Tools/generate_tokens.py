@@ -61,6 +61,12 @@ def main():
         lines.append(f"        static let {name} = DynamicColor(dark: {swift_rgba(spec['dark'])}, light: {swift_rgba(spec['light'])})")
     lines.append("    }")
     lines.append("")
+    lines.append("    enum Chart {")
+    ramp = tokens["chartRamp"]
+    values = ", ".join(f"DynamicColor(dark: {swift_rgba(d)}, light: {swift_rgba(l)})" for d, l in zip(ramp["dark"], ramp["light"]))
+    lines.append(f"        static let ramp: [DynamicColor] = [{values}]")
+    lines.append("    }")
+    lines.append("")
     lines.append("    enum Skin {")
     for name, stops in tokens["skin"].items():
         values = ", ".join(swift_rgba(s) for s in stops)
@@ -124,7 +130,7 @@ def main():
     report = ["# Контрастность токенов (WCAG 2.1)", "", "| Режим | Текст | Фон | Контраст | Норма | Итог |", "|---|---|---|---|---|---|"]
     failures = []
     checks = [("textPrimary", 4.5), ("textSecondary", 4.5), ("textTertiary", 3.0),
-              ("electric", 3.0), ("emerald", 3.0), ("coral", 3.0), ("violet", 3.0), ("cyan", 3.0), ("tangerine", 3.0)]
+              ("accentText", 4.5), ("accent", 3.0), ("positive", 3.0), ("negative", 3.0), ("warning", 3.0)]
     for mode in ("dark", "light"):
         for surface in ("background", "surface1", "surface2"):
             bg = parse_hex(tokens["color"][surface][mode])
@@ -135,6 +141,14 @@ def main():
                 if not ok:
                     failures.append(f"{mode}: {name} на {surface} = {ratio:.2f} < {minimum}")
                 report.append(f"| {mode} | {name} | {surface} | {ratio:.2f} | {minimum} | {'✅' if ok else '❌'} |")
+    # Белый текст на акцентной заливке (кнопки): 17 pt semibold — норма крупного текста 3.0, цель — 4.5.
+    for mode in ("dark", "light"):
+        bg = parse_hex(tokens["color"]["accent"][mode])
+        ratio = contrast(parse_hex(tokens["color"]["onAccent"][mode]), bg)
+        ok = ratio >= 3.0
+        if not ok:
+            failures.append(f"{mode}: onAccent на accent = {ratio:.2f} < 3.0")
+        report.append(f"| {mode} | onAccent | accent | {ratio:.2f} | 3.0 | {'✅' if ok else '❌'} |")
     with open(REPORT_OUT, "w", encoding="utf-8") as f:
         f.write("\n".join(report) + "\n")
 

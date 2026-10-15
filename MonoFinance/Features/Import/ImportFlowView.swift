@@ -94,14 +94,14 @@ struct ImportFlowView: View {
                 } label: {
                     VStack(spacing: 12) {
                         if model.isWorking {
-                            ProgressView().controlSize(.large).tint(Color.mono.electric)
+                            ProgressView().controlSize(.large).tint(Color.mono.accent)
                             Text("Читаю файл…")
                                 .monoFont(.callout)
                                 .foregroundStyle(Color.mono.textSecondary)
                         } else {
                             Image(systemName: "doc.badge.arrow.up")
                                 .font(.system(size: 34, weight: .semibold))
-                                .foregroundStyle(LinearGradient(colors: [Color.mono.electric, Color.mono.violet], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .foregroundStyle(LinearGradient(colors: [Color.mono.accent, Color.mono.accent], startPoint: .topLeading, endPoint: .bottomTrailing))
                             Text("Выбрать файл")
                                 .monoFont(.headline)
                                 .foregroundStyle(Color.mono.textPrimary)
@@ -143,7 +143,7 @@ struct ImportFlowView: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: symbol)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color.mono.cyan)
+                .foregroundStyle(Color.mono.accentText)
                 .frame(width: 20)
             Text(text)
                 .monoFont(.footnote)
@@ -157,7 +157,7 @@ struct ImportFlowView: View {
         if let error = model.error {
             Label { Text(verbatim: error) } icon: { Image(systemName: "exclamationmark.circle.fill") }
                 .monoFont(.footnote)
-                .foregroundStyle(Color.mono.coral)
+                .foregroundStyle(Color.mono.negative)
         }
     }
 
@@ -170,7 +170,7 @@ struct ImportFlowView: View {
                     if let fileName = model.fileName {
                         HStack(spacing: 10) {
                             Image(systemName: model.document?.format == .xlsx ? "tablecells" : "doc.plaintext")
-                                .foregroundStyle(Color.mono.electric)
+                                .foregroundStyle(Color.mono.accentText)
                             Text(verbatim: fileName)
                                 .monoFont(.subhead)
                                 .foregroundStyle(Color.mono.textPrimary)
@@ -180,7 +180,7 @@ struct ImportFlowView: View {
                     if let profile = model.appliedProfileName {
                         Label { Text("Применено сохранённое сопоставление «\(profile)»") } icon: { Image(systemName: "wand.and.stars") }
                             .monoFont(.footnote)
-                            .foregroundStyle(Color.mono.violet)
+                            .foregroundStyle(Color.mono.accentText)
                     }
                     if let document = model.document, document.tables.count > 1 {
                         FormSection(title: "Лист") {
@@ -295,7 +295,7 @@ struct ImportFlowView: View {
                     } label: {
                         Text("Импортировать: \(preview.candidates.filter { $0.include && $0.duplicate != .alreadyImported }.count)")
                     }
-                    .buttonStyle(PrimaryButtonStyle(colors: [Color.mono.emerald, Color.mono.cyan]))
+                    .buttonStyle(PrimaryButtonStyle())
                     .disabled(preview.includedCount == 0)
                 }
                 .padding(.horizontal, 16)
@@ -346,7 +346,7 @@ private struct StepIndicator: View {
             ForEach(0..<4, id: \.self) { index in
                 VStack(alignment: .leading, spacing: 6) {
                     Capsule()
-                        .fill(index <= step.rawValue ? AnyShapeStyle(LinearGradient(colors: [Color.mono.electric, Color.mono.violet], startPoint: .leading, endPoint: .trailing)) : AnyShapeStyle(Color.mono.surface3))
+                        .fill(index <= step.rawValue ? AnyShapeStyle(LinearGradient(colors: [Color.mono.accent, Color.mono.accent], startPoint: .leading, endPoint: .trailing)) : AnyShapeStyle(Color.mono.surface3))
                         .frame(height: 4)
                     Text(titles[index])
                         .monoFont(.caption)
@@ -447,14 +447,14 @@ private struct MappingGrid: View {
 
     private func tint(for role: ColumnRole) -> Color {
         switch role {
-        case .date, .time: return Color.mono.electric
-        case .amount: return Color.mono.violet
-        case .debit: return Color.mono.coral
-        case .credit: return Color.mono.emerald
-        case .direction, .currency: return Color.mono.sky
-        case .description, .merchant: return Color.mono.cyan
-        case .category: return Color.mono.magenta
-        case .balance, .ignore: return Color.mono.steel
+        case .date, .time: return Color.mono.accent
+        case .amount: return Color.mono.accent
+        case .debit: return Color.mono.negative
+        case .credit: return Color.mono.positive
+        case .direction, .currency: return Color.mono.textSecondary
+        case .description, .merchant: return Color.mono.accent
+        case .category: return Color.mono.accent
+        case .balance, .ignore: return Color.mono.neutral
         }
     }
 }
@@ -468,7 +468,7 @@ private struct PreviewSummary: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 Text(verbatim: "\(preview.includedCount)")
-                    .font(.system(size: 44, weight: .semibold, design: .serif).monospacedDigit())
+                    .font(.system(size: 44, weight: .semibold, design: .default).monospacedDigit())
                     .foregroundStyle(Color.mono.textPrimary)
                 Text("операций к импорту")
                     .monoFont(.callout)
@@ -484,14 +484,14 @@ private struct PreviewSummary: View {
                 if let inflow = preview.total(.inflow) {
                     VStack(alignment: .leading, spacing: 2) {
                         Kicker("Поступления")
-                        MoneyText(money: inflow, token: .callout, sign: .always, color: Color.mono.emerald, compact: true)
+                        MoneyText(money: inflow, token: .callout, sign: .always, color: Color.mono.positive, compact: true)
                     }
                 }
             }
             if preview.duplicateCount > 0 {
                 Label { Text("Похожих или уже загруженных строк: \(preview.duplicateCount). Они не отмечены.") } icon: { Image(systemName: "square.on.square") }
                     .monoFont(.footnote)
-                    .foregroundStyle(Color.mono.tangerine)
+                    .foregroundStyle(Color.mono.warning)
             }
         }
         .padding(16)
@@ -514,7 +514,7 @@ private struct CandidateRow: View {
             Button(action: onToggle) {
                 Image(systemName: candidate.include ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 22))
-                    .foregroundStyle(candidate.include ? Color.mono.emerald : Color.mono.textTertiary)
+                    .foregroundStyle(candidate.include ? Color.mono.positive : Color.mono.textTertiary)
             }
             .buttonStyle(.plain)
             .disabled(locked)
@@ -528,7 +528,7 @@ private struct CandidateRow: View {
                         .lineLimit(1)
                     Spacer(minLength: 8)
                     MoneyText(money: candidate.direction == .outflow ? candidate.amount.negated : candidate.amount, token: .amountRow,
-                              color: candidate.direction == .inflow ? Color.mono.emerald : Color.mono.textPrimary)
+                              color: candidate.direction == .inflow ? Color.mono.positive : Color.mono.textPrimary)
                 }
                 HStack(spacing: 6) {
                     Text(verbatim: DateFormatting.short(candidate.date, calendar: store.periods.calendar, language: language))
@@ -554,7 +554,7 @@ private struct CandidateRow: View {
                             Image(systemName: category?.icon ?? "tag")
                                 .foregroundStyle(category?.color.color ?? Color.mono.textTertiary)
                             Text(verbatim: category?.name ?? Phrase(ru: "Категория?", uz: "Kategoriya?", en: "Category?")(language))
-                                .foregroundStyle(category == nil ? Color.mono.tangerine : Color.mono.textSecondary)
+                                .foregroundStyle(category == nil ? Color.mono.warning : Color.mono.textSecondary)
                         }
                         .monoFont(.caption)
                         .padding(.horizontal, 8)
@@ -566,14 +566,14 @@ private struct CandidateRow: View {
 
                 switch candidate.duplicate {
                 case .alreadyImported:
-                    tag("Уже импортирована — будет пропущена", color: Color.mono.steel)
+                    tag("Уже импортирована — будет пропущена", color: Color.mono.neutral)
                 case .possible(let existingID):
-                    tag(possibleText(existingID), color: Color.mono.tangerine)
+                    tag(possibleText(existingID), color: Color.mono.warning)
                 case .none:
                     EmptyView()
                 }
                 if candidate.possibleOwnTransferID != nil {
-                    tag("Похоже на перевод между своими счетами — проверьте, чтобы не учесть дважды", color: Color.mono.sky)
+                    tag("Похоже на перевод между своими счетами — проверьте, чтобы не учесть дважды", color: Color.mono.textSecondary)
                 }
             }
         }

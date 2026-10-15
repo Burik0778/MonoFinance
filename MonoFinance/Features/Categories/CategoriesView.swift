@@ -46,7 +46,7 @@ struct CategoriesView: View {
                 Button {
                     router.open(.merchantRules)
                 } label: {
-                    FormRow(icon: "brain.head.profile", tint: Color.mono.violet, title: "Выученные правила",
+                    FormRow(icon: "brain.head.profile", tint: Color.mono.accent, title: "Выученные правила",
                             subtitle: Text("Продавец → категория: \(store.merchantRules.count)")) {
                         Image(systemName: "chevron.right").foregroundStyle(Color.mono.textTertiary)
                     }
@@ -76,7 +76,7 @@ struct CategoriesView: View {
             router.present(.category(category, category.kind))
         } label: {
             HStack(spacing: 12) {
-                CategoryGlyph(icon: category.icon, color: category.color.color, size: 38)
+                CategoryGlyph(icon: category.icon, color: category.color.color, size: 38, tinted: true)
                     .opacity(category.isArchived ? 0.5 : 1)
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
@@ -86,7 +86,7 @@ struct CategoriesView: View {
                         if category.isMandatory {
                             Image(systemName: "lock.fill")
                                 .font(.system(size: 10))
-                                .foregroundStyle(Color.mono.violet)
+                                .foregroundStyle(Color.mono.accentText)
                                 .accessibilityLabel(Text("Обязательная"))
                         }
                     }
@@ -106,10 +106,10 @@ struct CategoriesView: View {
                     try store.setArchived(category, archived: !category.isArchived)
                     Haptics.selection()
                 } catch {
-                    toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.coral))
+                    toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.negative))
                 }
             }
-            .tint(Color.mono.steel)
+            .tint(Color.mono.neutral)
         }
     }
 
@@ -167,10 +167,10 @@ struct CategoryEditorView: View {
     }
 
     var body: some View {
-        EditorScaffold(title: isNew ? "Новая категория" : "Категория", saveColors: [color.color, Color.mono.electric],
+        EditorScaffold(title: isNew ? "Новая категория" : "Категория", 
                        canSave: !name.trimmingCharacters(in: .whitespaces).isEmpty, error: error, onSave: save) {
             HStack(spacing: 14) {
-                CategoryGlyph(icon: icon, color: color.color, size: 56)
+                CategoryGlyph(icon: icon, color: color.color, size: 56, tinted: true)
                 MonoTextField(title: "Название", text: $name)
             }
             FormSection(title: "Значок") {
@@ -180,7 +180,7 @@ struct CategoryEditorView: View {
                 ColorSwatchPicker(selection: $color)
             }
             if kind == .expense {
-                ToggleRow(title: "Обязательная трата", subtitle: "Жильё, связь, кредиты, налоги — то, без чего не обойтись.", isOn: $mandatory, tint: Color.mono.violet)
+                ToggleRow(title: "Обязательная трата", subtitle: "Жильё, связь, кредиты, налоги — то, без чего не обойтись.", isOn: $mandatory, tint: Color.mono.accent)
             }
             if let category, !isNew {
                 if category.systemKey != nil {
@@ -213,7 +213,7 @@ struct CategoryEditorView: View {
                                 .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.surface2))
                             }
                             Button("Перенести") { reassign(category) }
-                                .buttonStyle(SecondaryButtonStyle(tint: Color.mono.electric))
+                                .buttonStyle(SecondaryButtonStyle(tint: Color.mono.accent))
                                 .disabled(reassignTarget == nil)
                         }
                     }
@@ -225,7 +225,7 @@ struct CategoryEditorView: View {
                 .buttonStyle(SecondaryButtonStyle())
                 if usageCount == 0 {
                     Button("Удалить категорию", role: .destructive) { confirmsDelete = true }
-                        .buttonStyle(SecondaryButtonStyle(tint: Color.mono.coral))
+                        .buttonStyle(SecondaryButtonStyle(tint: Color.mono.negative))
                 }
             }
         }
@@ -331,7 +331,7 @@ struct MerchantRulesView: View {
                                 do {
                                     try store.forgetRule(rule)
                                 } catch {
-                                    toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.coral))
+                                    toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.negative))
                                 }
                             }
                         }

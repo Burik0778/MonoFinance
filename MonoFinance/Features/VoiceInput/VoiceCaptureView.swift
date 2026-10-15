@@ -19,7 +19,7 @@ struct VoiceCaptureView: View {
 
     var body: some View {
         ZStack {
-            AmbientBackground(tint: model.phase == .review ? Color.mono.emerald : Color.mono.violet, secondary: Color.mono.electric, intensity: 1.2)
+            MonoBackdrop(haze: true)
             VStack(spacing: 0) {
                 topBar
                 switch model.phase {
@@ -257,7 +257,7 @@ struct VoiceCaptureView: View {
                     if let saveError {
                         Text(verbatim: saveError)
                             .monoFont(.footnote)
-                            .foregroundStyle(Color.mono.coral)
+                            .foregroundStyle(Color.mono.negative)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -271,7 +271,7 @@ struct VoiceCaptureView: View {
                 } label: {
                     Text(model.drafts.count == 1 ? "Сохранить операцию" : "Сохранить \(model.drafts.count) операции")
                 }
-                .buttonStyle(PrimaryButtonStyle(colors: [Color.mono.emerald, Color.mono.cyan]))
+                .buttonStyle(PrimaryButtonStyle())
                 .disabled(!model.allReady)
                 Button("Записать заново") {
                     model.reset()
@@ -289,7 +289,7 @@ struct VoiceCaptureView: View {
         do {
             let count = try model.saveAll(store: store)
             toasts.show(ToastMessage(text: count == 1 ? String(localized: "Операция добавлена") : String(localized: "Добавлено операций: \(count)"),
-                                     symbol: "waveform.badge.checkmark", tint: Color.mono.emerald))
+                                     symbol: "waveform.badge.checkmark", tint: Color.mono.positive))
             Haptics.success()
             dismiss()
         } catch {

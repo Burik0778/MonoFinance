@@ -46,10 +46,10 @@ struct BudgetEditorView: View {
                             Haptics.selection()
                             withMonoAnimation(.quick) { categoryID = nil }
                         } label: {
-                            FormRow(icon: "circle.hexagongrid.fill", tint: Color.mono.electric, title: "Все расходы месяца",
+                            FormRow(icon: "circle.hexagongrid.fill", tint: Color.mono.accent, title: "Все расходы месяца",
                                     subtitle: Text("Общий лимит, включая комиссии")) {
                                 if categoryID == nil {
-                                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.mono.electric)
+                                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.mono.accentText)
                                 }
                             }
                             .padding(.horizontal, 12)
@@ -61,11 +61,11 @@ struct BudgetEditorView: View {
                 }
             }
 
-            ToggleRow(title: "Переносить остаток", subtitle: "Неистраченное в этом месяце добавится к лимиту следующего.", isOn: $rollover, tint: Color.mono.violet)
+            ToggleRow(title: "Переносить остаток", subtitle: "Неистраченное в этом месяце добавится к лимиту следующего.", isOn: $rollover, tint: Color.mono.accent)
 
             if !isNew {
                 Button("Удалить бюджет", role: .destructive) { confirmsDelete = true }
-                    .buttonStyle(SecondaryButtonStyle(tint: Color.mono.coral))
+                    .buttonStyle(SecondaryButtonStyle(tint: Color.mono.negative))
             }
         }
         .onAppear(perform: load)
@@ -155,11 +155,11 @@ struct GoalEditorView: View {
     }
 
     var body: some View {
-        EditorScaffold(title: isNew ? "Новая цель" : "Цель", saveColors: [color.color, Color.mono.electric],
+        EditorScaffold(title: isNew ? "Новая цель" : "Цель", 
                        canSave: !name.trimmingCharacters(in: .whitespaces).isEmpty && AmountField.parse(amountText, currency: currency) != nil,
                        error: error, onSave: save) {
             HStack(spacing: 14) {
-                CategoryGlyph(icon: icon, color: color.color, size: 56)
+                CategoryGlyph(icon: icon, color: color.color, size: 56, tinted: true)
                 MonoTextField(title: "Название цели", text: $name, systemImage: nil)
             }
 
@@ -204,7 +204,7 @@ struct GoalEditorView: View {
 
             if !isNew {
                 Button("Удалить цель", role: .destructive) { confirmsDelete = true }
-                    .buttonStyle(SecondaryButtonStyle(tint: Color.mono.coral))
+                    .buttonStyle(SecondaryButtonStyle(tint: Color.mono.negative))
             }
         }
         .onAppear(perform: load)
@@ -284,10 +284,10 @@ struct ContributionEditorView: View {
     @State private var error: String?
 
     var body: some View {
-        EditorScaffold(title: "Взнос", saveColors: [goal.color.color, Color.mono.electric],
+        EditorScaffold(title: "Взнос", 
                        canSave: AmountField.parse(amountText, currency: goal.target.currency) != nil, error: error, onSave: save) {
             HStack(spacing: 12) {
-                CategoryGlyph(icon: goal.icon, color: goal.color.color, size: 44)
+                CategoryGlyph(icon: goal.icon, color: goal.color.color, size: 44, tinted: true)
                 VStack(alignment: .leading, spacing: 2) {
                     Kicker("Цель")
                     Text(verbatim: goal.name)
@@ -297,7 +297,7 @@ struct ContributionEditorView: View {
             }
             SegmentedPills(options: [false, true], selection: $withdraw,
                            title: { $0 ? String(localized: "Забрать") : String(localized: "Отложить") }, stretch: true)
-            AmountField(text: $amountText, currency: goal.target.currency, tint: withdraw ? Color.mono.coral : Color.mono.textPrimary)
+            AmountField(text: $amountText, currency: goal.target.currency, tint: withdraw ? Color.mono.negative : Color.mono.textPrimary)
             DatePicker(selection: $date, in: ...Date()) {
                 Label("Дата", systemImage: "calendar")
                     .monoFont(.body)
@@ -352,7 +352,7 @@ struct PlannedEditorView: View {
     private var isNew: Bool { item == nil }
 
     var body: some View {
-        EditorScaffold(title: isNew ? "Запланировать трату" : "Запланированная трата", saveColors: [Color.mono.tangerine, Color.mono.coral],
+        EditorScaffold(title: isNew ? "Запланировать трату" : "Запланированная трата", 
                        canSave: !title.trimmingCharacters(in: .whitespaces).isEmpty && AmountField.parse(amountText, currency: currency) != nil,
                        error: error, onSave: save) {
             MonoTextField(title: "Что планируете", text: $title, systemImage: "calendar.badge.plus")
@@ -365,7 +365,7 @@ struct PlannedEditorView: View {
                     .monoFont(.body)
                     .foregroundStyle(Color.mono.textSecondary)
             }
-            .tint(Color.mono.tangerine)
+            .tint(Color.mono.warning)
             .padding(.horizontal, 14)
             .frame(minHeight: 50)
             .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.surface2))
@@ -374,9 +374,9 @@ struct PlannedEditorView: View {
             }
             MonoTextField(title: "Заметка", text: $note, systemImage: "text.alignleft")
             if !isNew {
-                ToggleRow(title: "Выполнено", isOn: $completed, tint: Color.mono.emerald)
+                ToggleRow(title: "Выполнено", isOn: $completed, tint: Color.mono.positive)
                 Button("Удалить", role: .destructive) { confirmsDelete = true }
-                    .buttonStyle(SecondaryButtonStyle(tint: Color.mono.coral))
+                    .buttonStyle(SecondaryButtonStyle(tint: Color.mono.negative))
             }
         }
         .onAppear(perform: load)

@@ -138,7 +138,7 @@ struct AccountEditorView: View {
                             if kind == .credit {
                                 Toggle("Это задолженность (минус)", isOn: $openingNegative)
                                     .monoFont(.callout)
-                                    .tint(Color.mono.coral)
+                                    .tint(Color.mono.negative)
                             }
                             Text("Введите реальный остаток из банковского приложения. Он станет отправной точкой — дальше баланс считается из операций.")
                                 .monoFont(.caption)
@@ -178,13 +178,13 @@ struct AccountEditorView: View {
                         Toggle("Основной счёт для голосового ввода", isOn: $makeDefault)
                     }
                     .monoFont(.callout)
-                    .tint(Color.mono.electric)
+                    .tint(Color.mono.accent)
                     .monoSurface(padding: 16)
 
                     if let error {
                         Text(verbatim: error)
                             .monoFont(.footnote)
-                            .foregroundStyle(Color.mono.coral)
+                            .foregroundStyle(Color.mono.negative)
                     }
                 }
                 .padding(.horizontal, 20)

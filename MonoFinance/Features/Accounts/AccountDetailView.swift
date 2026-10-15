@@ -43,8 +43,8 @@ struct AccountDetailView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     Kicker("Этот месяц по счёту")
                     HStack(spacing: 12) {
-                        stat("Пришло", value: (flow?.income ?? .zero(store.baseCurrency)) + (flow?.transfersIn ?? .zero(store.baseCurrency)), tint: Color.mono.emerald)
-                        stat("Ушло", value: (flow?.spending ?? .zero(store.baseCurrency)) + (flow?.fees ?? .zero(store.baseCurrency)) + (flow?.transfersOut ?? .zero(store.baseCurrency)), tint: Color.mono.coral)
+                        stat("Пришло", value: (flow?.income ?? .zero(store.baseCurrency)) + (flow?.transfersIn ?? .zero(store.baseCurrency)), tint: Color.mono.positive)
+                        stat("Ушло", value: (flow?.spending ?? .zero(store.baseCurrency)) + (flow?.fees ?? .zero(store.baseCurrency)) + (flow?.transfersOut ?? .zero(store.baseCurrency)), tint: Color.mono.negative)
                     }
                     if history.count > 1 {
                         Chart(history) { point in
@@ -90,7 +90,7 @@ struct AccountDetailView: View {
                             NavigationLink(value: Route.filteredTransactions(TransactionFilter(accountID: account.id))) {
                                 Text("Показать все \(transactions.count)")
                                     .monoFont(.subhead)
-                                    .foregroundStyle(Color.mono.electric)
+                                    .foregroundStyle(Color.mono.accentText)
                             }
                         }
                     }
@@ -103,12 +103,12 @@ struct AccountDetailView: View {
                             try store.setArchived(current, archived: !current.isArchived)
                             Haptics.success()
                         } catch {
-                            toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.coral))
+                            toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.negative))
                         }
                     }
                     .buttonStyle(SecondaryButtonStyle())
                     Button("Удалить счёт", role: .destructive) { confirmsDelete = true }
-                        .buttonStyle(SecondaryButtonStyle(tint: Color.mono.coral))
+                        .buttonStyle(SecondaryButtonStyle(tint: Color.mono.negative))
                 }
             }
             .padding(.horizontal, 20)
@@ -130,7 +130,7 @@ struct AccountDetailView: View {
                     Haptics.warning()
                     dismiss()
                 } catch {
-                    toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.coral))
+                    toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.negative))
                 }
             }
         } message: {
@@ -210,7 +210,7 @@ struct SetBalanceView: View {
                 MoneyText(money: current, token: .footnote, color: Color.mono.textSecondary)
             }
             Text(verbatim: (isNegative ? MoneyFormatter.minus : "") + display)
-                .font(.system(size: 44, weight: .semibold, design: .serif).monospacedDigit())
+                .font(.system(size: 44, weight: .semibold, design: .default).monospacedDigit())
                 .foregroundStyle(entry.isEmpty ? Color.mono.textTertiary : Color.mono.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
@@ -218,11 +218,11 @@ struct SetBalanceView: View {
             if account.kind == .credit || current.isNegative {
                 Toggle("Отрицательный остаток (долг)", isOn: $isNegative)
                     .monoFont(.callout)
-                    .tint(Color.mono.coral)
+                    .tint(Color.mono.negative)
                     .padding(.horizontal, 24)
             }
             if let error {
-                Text(verbatim: error).monoFont(.footnote).foregroundStyle(Color.mono.coral)
+                Text(verbatim: error).monoFont(.footnote).foregroundStyle(Color.mono.negative)
             }
             Spacer(minLength: 0)
             NumberPad(allowsSeparator: account.currency.minorUnitDigits > 0, decimalSeparator: formatter.decimalSeparator) { key in

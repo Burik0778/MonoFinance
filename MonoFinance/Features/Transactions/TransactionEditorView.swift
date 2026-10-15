@@ -63,7 +63,7 @@ struct TransactionEditorView: View {
                         if let error {
                             Label { Text(verbatim: error) } icon: { Image(systemName: "exclamationmark.circle.fill") }
                                 .monoFont(.footnote)
-                                .foregroundStyle(Color.mono.coral)
+                                .foregroundStyle(Color.mono.negative)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -81,7 +81,7 @@ struct TransactionEditorView: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                     Button(isNew ? "Сохранить" : "Сохранить изменения") { save() }
-                        .buttonStyle(PrimaryButtonStyle(colors: saveColors))
+                        .buttonStyle(PrimaryButtonStyle())
                         .disabled(entry.isEmpty)
                 }
                 .padding(.horizontal, 16)
@@ -104,14 +104,6 @@ struct TransactionEditorView: View {
             .onChange(of: photoItem) { _, item in loadReceipt(item) }
         }
         .presentationDetents([.large])
-    }
-
-    private var saveColors: [Color] {
-        switch kind {
-        case .income, .refund: return [Color.mono.emerald, Color.mono.cyan]
-        case .transfer: return [Color.mono.sky, Color.mono.electric]
-        default: return [Color.mono.electric, Color.mono.violet]
-        }
     }
 
     // MARK: - Тип
@@ -158,11 +150,11 @@ struct TransactionEditorView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     if kind == .adjustment {
                         Text(verbatim: adjustmentNegative ? MoneyFormatter.minus : "+")
-                            .font(.system(size: 48, weight: .semibold, design: .serif))
-                            .foregroundStyle(adjustmentNegative ? Color.mono.coral : Color.mono.emerald)
+                            .font(.system(size: 48, weight: .semibold, design: .default))
+                            .foregroundStyle(adjustmentNegative ? Color.mono.negative : Color.mono.positive)
                     }
                     Text(verbatim: amountText)
-                        .font(.system(size: 52, weight: .semibold, design: .serif).monospacedDigit())
+                        .font(.system(size: 52, weight: .semibold, design: .default).monospacedDigit())
                         .foregroundStyle(entry.isEmpty ? Color.mono.textTertiary : Color.mono.textPrimary)
                         .contentTransition(.numericText())
                         .lineLimit(1)
@@ -175,7 +167,7 @@ struct TransactionEditorView: View {
                 if kind == .adjustment {
                     Toggle("Уменьшить баланс", isOn: $adjustmentNegative)
                         .monoFont(.callout)
-                        .tint(Color.mono.coral)
+                        .tint(Color.mono.negative)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -223,7 +215,7 @@ struct TransactionEditorView: View {
                         } label: {
                             Text("По курсу ЦБ: \(formatter.string(suggested)) — подставить")
                                 .monoFont(.caption)
-                                .foregroundStyle(Color.mono.electric)
+                                .foregroundStyle(Color.mono.accentText)
                         }
                     }
                     Text("Укажите сумму, которая фактически пришла: курс банка может отличаться от курса ЦБ.")
@@ -294,7 +286,7 @@ struct TransactionEditorView: View {
                 if let suggested = suggestedCategoryID, suggested == categoryID, !categoryTouched {
                     Label("Предложено", systemImage: "sparkles")
                         .monoFont(.caption)
-                        .foregroundStyle(Color.mono.violet)
+                        .foregroundStyle(Color.mono.accentText)
                 }
             }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 78), spacing: 8)], spacing: 8) {
@@ -306,11 +298,7 @@ struct TransactionEditorView: View {
                         withMonoAnimation(.quick) { categoryID = selected ? nil : category.id }
                     } label: {
                         VStack(spacing: 6) {
-                            CategoryGlyph(icon: category.icon, color: selected ? .white : category.color.color, size: 38)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(selected ? category.color.color : Color.clear)
-                                )
+                            CategoryGlyph(icon: category.icon, color: category.color.color, size: 40, isSelected: selected)
                             Text(verbatim: category.name)
                                 .monoFont(.caption)
                                 .foregroundStyle(selected ? Color.mono.textPrimary : Color.mono.textSecondary)
@@ -322,7 +310,7 @@ struct TransactionEditorView: View {
                         .padding(.vertical, 6)
                         .background(
                             RoundedRectangle(cornerRadius: MonoTokens.Radius.sm, style: .continuous)
-                                .fill(selected ? category.color.color.opacity(0.14) : Color.clear)
+                                .fill(selected ? Color.mono.accentWash : Color.clear)
                         )
                     }
                     .buttonStyle(PressableStyle())
@@ -363,7 +351,7 @@ struct TransactionEditorView: View {
                     .monoFont(.body)
                     .foregroundStyle(Color.mono.textSecondary)
             }
-            .tint(Color.mono.electric)
+            .tint(Color.mono.accent)
             .padding(.horizontal, 14)
             .frame(minHeight: 50)
             .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.surface3))
@@ -383,9 +371,9 @@ struct TransactionEditorView: View {
                     } label: {
                         Label("Убрать", systemImage: "xmark")
                     }
-                    .buttonStyle(ChipStyle(tint: Color.mono.coral))
+                    .buttonStyle(ChipStyle(tint: Color.mono.negative))
                     Image(systemName: "checkmark.seal.fill")
-                        .foregroundStyle(Color.mono.emerald)
+                        .foregroundStyle(Color.mono.positive)
                         .accessibilityLabel(Text("Чек прикреплён"))
                 }
             }

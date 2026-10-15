@@ -123,7 +123,7 @@ final class AppEnvironment {
             router.analyticsPath = NavigationPath()
             router.plansPath = NavigationPath()
         } catch {
-            toasts.show(ToastMessage(text: AppError(error).message, symbol: "exclamationmark.triangle.fill", tint: Color.mono.tangerine))
+            toasts.show(ToastMessage(text: AppError(error).message, symbol: "exclamationmark.triangle.fill", tint: Color.mono.warning))
         }
     }
 
