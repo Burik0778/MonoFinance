@@ -51,6 +51,7 @@ struct SettingsView: View {
                             .monoFont(.subhead)
                             .foregroundStyle(Color.mono.textSecondary)
                             .lineLimit(1)
+                            .frame(maxWidth: 120, alignment: .trailing)
                     }
                 }
             } header: {

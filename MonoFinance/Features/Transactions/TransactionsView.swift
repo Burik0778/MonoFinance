@@ -136,15 +136,20 @@ struct TransactionsView: View {
     private var header: some View {
         let analytics = store.analytics()
         let month = analytics.summary(store.periods.range(for: .thisMonth, now: Date()))
-        return HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Kicker("Расходы месяца")
-                MoneyText(money: month.outflow, token: .title2, color: Color.mono.textPrimary)
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 4) {
-                Kicker("Доходы")
-                MoneyText(money: month.income, token: .title2, sign: .always, color: Color.mono.emerald)
+        return VStack(alignment: .leading, spacing: 8) {
+            Text(verbatim: DateFormatting.monthTitle(store.periods.monthKey(Date()), calendar: store.periods.calendar, language: language, includeYear: false))
+                .monoFont(.subhead)
+                .foregroundStyle(Color.mono.textSecondary)
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Kicker("Расходы")
+                    MoneyText(money: month.outflow, token: .title2, color: Color.mono.textPrimary)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 4) {
+                    Kicker("Доходы")
+                    MoneyText(money: month.income, token: .title2, sign: .always, color: Color.mono.emerald)
+                }
             }
         }
     }

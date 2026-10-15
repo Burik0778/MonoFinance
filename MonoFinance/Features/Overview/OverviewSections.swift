@@ -89,8 +89,8 @@ struct FlowChartCard: View {
                 .chartYScale(domain: domain)
                 .chartYAxis(.hidden)
                 .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: 4)) { _ in
-                        AxisValueLabel(format: .dateTime.day().month(.abbreviated), centered: false)
+                    AxisMarks(preset: .aligned, values: .automatic(desiredCount: 4)) { _ in
+                        AxisValueLabel(format: .dateTime.day().month(.abbreviated))
                             .foregroundStyle(Color.mono.textTertiary)
                     }
                 }

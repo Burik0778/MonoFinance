@@ -58,7 +58,7 @@ struct GoalDetailView: View {
                 }
 
                 if let status {
-                    HStack(spacing: 0) {
+                    HStack(alignment: .top, spacing: 12) {
                         figure("Осталось", money: status.remaining, color: Color.mono.textPrimary)
                         if let monthly = status.monthlyNeeded {
                             figure("В месяц", money: monthly, color: color)

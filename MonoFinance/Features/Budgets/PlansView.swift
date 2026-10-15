@@ -74,6 +74,7 @@ struct PlansView: View {
             .padding(.bottom, 32)
         }
         .scrollIndicators(.hidden)
+        .defaultScrollAnchor(DebugFlags.scrollAnchor)
         .background(AmbientBackground(tint: tint(overall), secondary: Color.mono.violet, intensity: 0.8))
         .toolbar(.hidden, for: .navigationBar)
     }
@@ -183,13 +184,14 @@ private struct MonthLimitCard: View {
 private struct BudgetRow: View {
     let status: BudgetStatus
     @Environment(FinanceStore.self) private var store
+    @Environment(\.appLanguage) private var language
 
     var body: some View {
         let category = status.budget.categoryID.flatMap { store.categoryMap[$0] }
         HStack(spacing: 12) {
             CategoryGlyph(category: category, kind: .expense, size: 38)
             VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(verbatim: category?.name ?? "—")
                         .monoFont(.body)
                         .foregroundStyle(Color.mono.textPrimary)
@@ -201,26 +203,23 @@ private struct BudgetRow: View {
                             .accessibilityLabel(Text("С переносом остатка"))
                     }
                     Spacer(minLength: 8)
-                    MoneyText(money: status.spent, token: .footnote, compact: true)
-                    Text(verbatim: "/")
-                        .monoFont(.footnote)
-                        .foregroundStyle(Color.mono.textTertiary)
-                    MoneyText(money: status.effectiveLimit, token: .footnote, color: Color.mono.textSecondary, compact: true)
+                    Text(verbatim: PercentFormatting.string(min(status.progress, 9.99), language: language))
+                        .monoFont(.subhead, digits: true)
+                        .foregroundStyle(status.state.tint)
                 }
                 ProgressTrack(progress: status.progress, tint: status.state.tint, height: 6)
-                HStack {
+                HStack(spacing: 4) {
+                    MoneyText(money: status.spent, token: .caption, color: Color.mono.textSecondary, compact: true)
+                    Text("из")
+                    MoneyText(money: status.effectiveLimit, token: .caption, color: Color.mono.textTertiary, compact: true)
+                    Spacer(minLength: 8)
                     if status.remaining.isNegative {
                         Text("Превышение")
                         MoneyText(money: status.remaining.magnitude, token: .caption, color: Color.mono.coral, compact: true)
                     } else if let daily = status.dailyAllowance {
-                        Text("Можно")
                         MoneyText(money: daily, token: .caption, color: Color.mono.textSecondary, compact: true)
                         Text("в день")
-                    } else {
-                        Text("Осталось")
-                        MoneyText(money: status.remaining, token: .caption, color: Color.mono.textSecondary, compact: true)
                     }
-                    Spacer()
                 }
                 .monoFont(.caption)
                 .foregroundStyle(status.remaining.isNegative ? Color.mono.coral : Color.mono.textTertiary)

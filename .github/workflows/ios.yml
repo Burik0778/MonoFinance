@@ -144,9 +144,14 @@ jobs:
             xcrun simctl io "$UDID" screenshot "shots/$name.png" || true
           }
           shoot 01-overview -monoTab overview
+          shoot 01b-overview-middle -monoTab overview -monoScroll center
+          shoot 01c-overview-bottom -monoTab overview -monoScroll bottom
           shoot 02-transactions -monoTab transactions
           shoot 03-analytics -monoTab analytics
+          shoot 03b-analytics-middle -monoTab analytics -monoScroll center
+          shoot 03c-analytics-bottom -monoTab analytics -monoScroll bottom
           shoot 04-plans -monoTab plans
+          shoot 04b-plans-bottom -monoTab plans -monoScroll bottom
           shoot 05-voice -monoVoice "Сегодня потратил 120 тысяч на такси и 75 тысяч на кофе с карты Капиталбанка"
           shoot 06-account -monoRoute account
           shoot 07-expense -monoSheet expense

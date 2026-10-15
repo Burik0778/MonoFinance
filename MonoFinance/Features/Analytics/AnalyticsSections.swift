@@ -25,10 +25,10 @@ struct SpendingHeadline: View {
                     .foregroundStyle(Color.mono.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            HStack(spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
                 stat(title: Phrase(ru: "В день", uz: "Kuniga", en: "Per day")(language), value: report.averageDaily)
                 if let projected = report.projectedMonth {
-                    stat(title: Phrase(ru: "Прогноз на месяц", uz: "Oylik prognoz", en: "Month forecast")(language), value: projected)
+                    stat(title: Phrase(ru: "Прогноз", uz: "Prognoz", en: "Forecast")(language), value: projected)
                 }
                 stat(title: Phrase(ru: "Операций", uz: "Amallar", en: "Transactions")(language), count: report.summary.transactionCount)
             }
@@ -41,6 +41,8 @@ struct SpendingHeadline: View {
                 .textCase(.uppercase)
                 .monoFont(.kicker)
                 .foregroundStyle(Color.mono.textTertiary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
             if let value {
                 MoneyText(money: value, token: .headline, compact: true)
             } else if let count {
@@ -49,6 +51,7 @@ struct SpendingHeadline: View {
                     .foregroundStyle(Color.mono.textPrimary)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// «На 12 % меньше, чем в сентябре» — только из реальных сумм; без данных за прошлый период ничего не утверждаем.
@@ -377,7 +380,7 @@ struct TrendCard: View {
                     }
                 }
                 .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: 5)) { _ in
+                    AxisMarks(preset: .aligned, values: .automatic(desiredCount: 5)) { _ in
                         AxisValueLabel(format: axisFormat)
                             .foregroundStyle(Color.mono.textTertiary)
                     }

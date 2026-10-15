@@ -218,7 +218,9 @@ struct FormRow<Trailing: View>: View {
                         .foregroundStyle(Color.mono.textSecondary)
                 }
             }
-            Spacer(minLength: 8)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
             trailing
         }
         .padding(.vertical, 6)

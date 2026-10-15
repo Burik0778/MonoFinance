@@ -50,6 +50,7 @@ struct OverviewView: View {
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
+        .defaultScrollAnchor(DebugFlags.scrollAnchor)
         .background(AmbientBackground(tint: stateTint(month), secondary: Color.mono.electric))
         .toolbar(.hidden, for: .navigationBar)
         .refreshable { store.reload() }

@@ -150,6 +150,7 @@ struct AnalyticsView: View {
             .padding(.bottom, 32)
         }
         .scrollIndicators(.hidden)
+        .defaultScrollAnchor(DebugFlags.scrollAnchor)
         .background(AmbientBackground(tint: report.summary.net.isNegative ? Color.mono.coral : Color.mono.cyan,
                                       secondary: Color.mono.violet, intensity: 0.8))
         .toolbar(.hidden, for: .navigationBar)

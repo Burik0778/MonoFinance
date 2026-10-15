@@ -130,6 +130,7 @@ struct ImportFlowView: View {
                     note("questionmark.diamond", "Готовых шаблонов для выписок Kapitalbank, Uzum, Orient Finans и Trastbank пока нет: их форматы не проверены на реальных файлах. Колонки определяются автоматически, проверьте их на следующем шаге.")
                     note("xmark.bin", "Старый формат Excel 97–2003 (.xls) не поддерживается — сохраните файл как XLSX или CSV.")
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .monoSurface(radius: MonoTokens.Radius.xl, padding: 16)
             }
             .padding(.horizontal, 20)

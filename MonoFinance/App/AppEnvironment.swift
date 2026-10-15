@@ -178,3 +178,21 @@ enum AppCommand: Equatable {
         }
     }
 }
+
+/// Флаги для снимков экрана в симуляторе (только в отладочной сборке).
+enum DebugFlags {
+    /// `-monoScroll top|center|bottom` — начальная позиция прокрутки длинных экранов.
+    static let scrollAnchor: UnitPoint = {
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        if let index = arguments.firstIndex(of: "-monoScroll"), arguments.indices.contains(index + 1) {
+            switch arguments[index + 1] {
+            case "center": return .center
+            case "bottom": return .bottom
+            default: return .top
+            }
+        }
+        #endif
+        return .top
+    }()
+}
