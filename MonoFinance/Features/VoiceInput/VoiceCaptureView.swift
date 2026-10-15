@@ -198,6 +198,15 @@ struct VoiceCaptureView: View {
                     .buttonStyle(PrimaryButtonStyle())
             } else if model.phase == .processing {
                 ProgressView().tint(Color.mono.textPrimary)
+            } else if model.phase == .idle {
+                Button {
+                    model.cancel()
+                    withMonoAnimation(.quick) { typing = true }
+                    typedFocused = true
+                } label: {
+                    Label("Ввести фразу текстом", systemImage: "keyboard")
+                }
+                .buttonStyle(SecondaryButtonStyle())
             }
         }
         .padding(.horizontal, 20)

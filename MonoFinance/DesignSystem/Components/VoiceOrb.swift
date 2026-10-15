@@ -48,13 +48,13 @@ struct VoiceOrb: View {
                     value += 0.06 * (1 + sin(time * 3 + Double(index) * 0.5)) * (0.4 + level)
                 }
             }
-            let length: CGFloat = 3 + CGFloat(min(value, 1)) * maxLength
+            let length: CGFloat = (active ? 3 : (index % 6 == 0 ? 9 : 5)) + CGFloat(min(value, 1)) * maxLength
             let start = CGPoint(x: center.x + CGFloat(cos(angle)) * inner, y: center.y + CGFloat(sin(angle)) * inner)
             let end = CGPoint(x: center.x + CGFloat(cos(angle)) * (inner + length), y: center.y + CGFloat(sin(angle)) * (inner + length))
             var path = Path()
             path.move(to: start)
             path.addLine(to: end)
-            let opacity = active ? 0.35 + 0.65 * min(value * 1.4, 1) : (index % 6 == 0 ? 0.45 : 0.18)
+            let opacity = active ? 0.35 + 0.65 * min(value * 1.4, 1) : (index % 6 == 0 ? 0.7 : 0.32)
             context.stroke(path, with: .color(tick.opacity(opacity)), style: StrokeStyle(lineWidth: index % 6 == 0 ? 2 : 1.4, lineCap: .round))
         }
 
