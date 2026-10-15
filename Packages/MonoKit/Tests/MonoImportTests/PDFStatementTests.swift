@@ -190,6 +190,8 @@ final class PDFStatementTests: XCTestCase {
     #if canImport(PDFKit)
     /// Синтетические выписки, свёрстанные как у банков и напечатанные Chromium в PDF: проверяется извлечение слов PDFKit.
     func testReadsKapitalbankPDF() throws {
+        let pages = try PDFTextExtractor.pages(from: try fixture("kapitalbank_statement.pdf"))
+        XCTAssertNotNil(PDFStatementReader.table(from: pages), debugWords(pages))
         let document = try ImportReader.read(data: try fixture("kapitalbank_statement.pdf"), fileName: "statement.pdf")
         XCTAssertEqual(document.format, .pdf)
         let table = try XCTUnwrap(document.tables.first)
@@ -203,6 +205,8 @@ final class PDFStatementTests: XCTestCase {
     }
 
     func testReadsUzumPDF() throws {
+        let pages = try PDFTextExtractor.pages(from: try fixture("uzum_statement.pdf"))
+        XCTAssertNotNil(PDFStatementReader.table(from: pages), debugWords(pages))
         let document = try ImportReader.read(data: try fixture("uzum_statement.pdf"), fileName: "statement.pdf")
         let table = try XCTUnwrap(document.tables.first)
         XCTAssertEqual(table.rows.count, 41, debugWords("uzum_statement.pdf"))
@@ -215,8 +219,13 @@ final class PDFStatementTests: XCTestCase {
 
     /// Строки первой страницы — для разбора падения в CI.
     func debugWords(_ name: String) -> String {
-        guard let data = try? fixture(name), let pages = try? PDFTextExtractor.pages(from: data), let page = pages.first else { return "no pages" }
-        return PDFTableLayout.lines(page.words).prefix(40).map { line in
+        guard let data = try? fixture(name), let pages = try? PDFTextExtractor.pages(from: data) else { return "no pages" }
+        return debugWords(pages)
+    }
+
+    func debugWords(_ pages: [PDFPageText]) -> String {
+        guard let page = pages.first else { return "no pages" }
+        return "pages \(pages.count), words \(page.words.count)\n" + PDFTableLayout.lines(page.words).prefix(40).map { line in
             String(format: "%.1f ", line.y) + line.words.map { String(format: "[%.0f-%.0f h%.1f]", $0.minX, $0.maxX, $0.height) + $0.text }.joined(separator: " ")
         }.joined(separator: "\n")
     }

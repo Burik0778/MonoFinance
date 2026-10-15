@@ -135,8 +135,10 @@ public enum PDFTableLayout {
     /// Положение колонок по строке заголовка и нижняя граница заголовка.
     static func headerColumns(lines: [Line], titles: [String], spine: Int,
                               isAnchor: (String) -> Bool) -> (columns: [Double], bottom: Double)? {
-        guard let headerLine = lines.first(where: { line in line.words.contains { fold($0.text) == titles[spine] } }),
-              let spineX = headerLine.words.first(where: { fold($0.text) == titles[spine] })?.minX else { return nil }
+        // Слова заголовка могут прийти слитно («Деталиоперации»), поэтому сравнение — по началу слова.
+        let isTitle = { (word: PDFWord, title: String) -> Bool in fold(word.text).hasPrefix(title) }
+        guard let headerLine = lines.first(where: { line in line.words.contains { isTitle($0, titles[spine]) } }),
+              let spineX = headerLine.words.first(where: { isTitle($0, titles[spine]) })?.minX else { return nil }
         // Заголовок может занимать несколько строк («Дата и / время / операции»).
         var region: [Line] = []
         for line in lines where line.y >= headerLine.y - 30 {
@@ -149,7 +151,7 @@ public enum PDFTableLayout {
         var used: [PDFWord] = []
         for title in titles {
             let candidates = region.flatMap(\.words)
-                .filter { fold($0.text) == title && !used.contains($0) && $0.minX > (columns.last ?? -.infinity) + 5 }
+                .filter { isTitle($0, title) && !used.contains($0) && $0.minX > (columns.last ?? -.infinity) + 5 }
                 .sorted { $0.minX < $1.minX }
             guard let match = candidates.first else { return nil }
             columns.append(match.minX)

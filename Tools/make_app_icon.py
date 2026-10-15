@@ -1,57 +1,38 @@
-"""Генерирует иконку MONO 1024×1024 (без прозрачности) в стиле «Graphite»:
-чёрный фон, белое ядро и радиальная шкала — тот же мотив, что у голосового прибора в приложении."""
-import math
+"""Генерирует иконку MONO 1024×1024 (без прозрачности): графитовый фон с мягким светом сверху
+и три строки выписки, от яркой к тусклой, — история операций, сведённая к сути."""
 import sys
 import numpy as np
-from PIL import Image, ImageChops, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 
 S = 1024
 SS = 3  # суперсэмплинг для гладких краёв
 out = sys.argv[1] if len(sys.argv) > 1 else "AppIcon.png"
 
-# Фон: графит с холодным светом сверху.
+# Фон: радиальный графит — светлее у верхней трети, к краям почти чёрный.
 yy, xx = np.mgrid[0:S, 0:S].astype(np.float32)
-top = np.array([0x1A, 0x1A, 0x1D], np.float32) / 255
-bottom = np.array([0x00, 0x00, 0x00], np.float32) / 255
-t = (yy / S)[..., None]
-bg = top * (1 - t) + bottom * t
-r = np.sqrt((xx - S * 0.3) ** 2 + (yy - 0) ** 2) / (S * 0.9)
-bg += (np.array([0xFF, 0xFF, 0xFF], np.float32) / 255)[None, None, :] * (0.03 * np.clip(1 - r, 0, 1) ** 2)[..., None]
-base = Image.fromarray((np.clip(bg, 0, 1) * 255).astype(np.uint8), "RGB").resize((S * SS, S * SS), Image.BICUBIC)
+r = np.sqrt((xx - S * 0.5) ** 2 + (yy - S * 0.28) ** 2) / (S * 0.85 * 1.414)
+stops = [(0.0, (0x26, 0x27, 0x2B)), (0.55, (0x12, 0x12, 0x14)), (1.0, (0x05, 0x05, 0x06))]
+bg = np.zeros((S, S, 3), np.float32)
+for (p0, c0), (p1, c1) in zip(stops, stops[1:]):
+    t = np.clip((r - p0) / (p1 - p0), 0, 1)[..., None]
+    inside = ((r >= p0) & (r <= p1))[..., None] if p0 > 0 else (r <= p1)[..., None]
+    bg = np.where(inside, np.array(c0, np.float32) * (1 - t) + np.array(c1, np.float32) * t, bg)
+bg = np.where((r > 1.0)[..., None], np.array(stops[-1][1], np.float32), bg)
+base = Image.fromarray(np.clip(bg, 0, 255).astype(np.uint8), "RGB").resize((S * SS, S * SS), Image.BICUBIC)
 
-draw = ImageDraw.Draw(base, "RGBA")
-c = S * SS / 2
-accent = (0xF4, 0xF4, 0xF6, 255)
-tick = (0xC7, 0xC7, 0xCC)
+# Строки: верхняя — серебро с вертикальным градиентом, ниже — белый с прозрачностью 62% и 30%.
+bars = Image.new("RGBA", base.size, (0, 0, 0, 0))
+draw = ImageDraw.Draw(bars)
+x, h = 282, 56
+for y, width, alpha in [(352, 460, 255), (484, 340, 158), (616, 220, 77)]:
+    draw.rounded_rectangle([x * SS, y * SS, (x + width) * SS, (y + h) * SS], radius=h * SS // 2, fill=(255, 255, 255, alpha))
+# Серебро верхней строки: от белого к #BFC1C6.
+top = np.array(bars)
+y0, y1 = 352 * SS, (352 + h) * SS
+shade = np.linspace([255, 255, 255], [0xBF, 0xC1, 0xC6], y1 - y0)[:, None, :]
+top[y0:y1, :, :3] = np.where(top[y0:y1, :, 3:4] > 0, shade, top[y0:y1, :, :3])
+bars = Image.fromarray(top.astype(np.uint8), "RGBA")
 
-# Радиальная шкала: 60 штрихов, каждый пятый длиннее и ярче; длина меняется плавно — «голос».
-count = 60
-inner = 0.30 * S * SS
-for i in range(count):
-    a = i / count * 2 * math.pi - math.pi / 2
-    major = i % 5 == 0
-    wave = 0.5 + 0.5 * math.sin(i / count * 2 * math.pi * 3 + 0.6)
-    length = (0.022 + 0.05 * wave) * S * SS if not major else 0.08 * S * SS
-    x1, y1 = c + math.cos(a) * inner, c + math.sin(a) * inner
-    x2, y2 = c + math.cos(a) * (inner + length), c + math.sin(a) * (inner + length)
-    alpha = 235 if major else int(80 + 110 * wave)
-    draw.line([(x1, y1), (x2, y2)], fill=tick + (alpha,), width=int((8 if major else 5) * SS / 1.5))
-
-# Кольцо-орбита.
-ring = 0.255 * S * SS
-draw.ellipse([c - ring, c - ring, c + ring, c + ring], outline=(0xFF, 0xFF, 0xFF, 70), width=int(3 * SS))
-
-# Ядро: сплошной акцент и мягкий блик сверху.
-core = 0.215 * S * SS
-draw.ellipse([c - core, c - core, c + core, c + core], fill=accent)
-hl = Image.new("L", base.size, 0)
-ImageDraw.Draw(hl).ellipse([c - core * 0.9, c - core * 0.98, c + core * 0.9, c + core * 0.2], fill=0)
-hl = hl.filter(ImageFilter.GaussianBlur(40 * SS / 3))
-mask = Image.new("L", base.size, 0)
-ImageDraw.Draw(mask).ellipse([c - core, c - core, c + core, c + core], fill=255)
-hl = ImageChops.multiply(hl, mask)
-base = Image.composite(Image.new("RGB", base.size, (255, 255, 255)), base, hl)
-
-im = base.resize((S, S), Image.LANCZOS)
+im = Image.alpha_composite(base.convert("RGBA"), bars).convert("RGB").resize((S, S), Image.LANCZOS)
 im.save(out, optimize=True)
 print("saved", out, im.size, im.mode)
