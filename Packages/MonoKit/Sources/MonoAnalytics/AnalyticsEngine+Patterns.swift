@@ -218,3 +218,30 @@ public enum Statistics {
         return median(values.map { abs($0 - m) })
     }
 }
+
+// MARK: - Крупные траты
+
+extension AnalyticsEngine {
+    /// Та же аналитика, но из расходов и комиссий остаются только суммы от `minimum` (в базовой валюте).
+    /// Доходы, возвраты, переводы и корректировки не трогаются. Операции без курса отбрасываются,
+    /// как и в итогах. Нужна для отчётов «только крупные расходы».
+    public func filteringExpenses(atLeast minimum: Money) -> AnalyticsEngine {
+        let filtered = transactions.filter { transaction in
+            guard transaction.kind == .expense || transaction.kind == .fee else { return true }
+            guard let amount = baseAmount(transaction) else { return false }
+            return amount.minorUnits >= minimum.magnitude.minorUnits
+        }
+        return AnalyticsEngine(transactions: filtered, accounts: Array(accounts.values), categories: Array(categories.values),
+                               converter: converter, periods: periods)
+    }
+
+    /// Пороги «крупных» трат для быстрых фильтров — в основных единицах базовой валюты.
+    public static func largeExpenseThresholds(for currency: Currency) -> [Int] {
+        switch currency.code {
+        case "UZS": return [100_000, 500_000, 1_000_000, 5_000_000]
+        case "KZT", "KRW": return [10_000, 50_000, 100_000, 500_000]
+        case "RUB", "JPY": return [1_000, 5_000, 10_000, 50_000]
+        default: return [50, 100, 500, 1_000]
+        }
+    }
+}

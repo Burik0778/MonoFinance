@@ -10,6 +10,8 @@ struct SpendingHeadline: View {
     let report: AnalyticsReport
     let scope: AnalyticsScope
     let month: MonthKey
+    /// Включён фильтр «только крупные траты».
+    var largeOnly = false
 
     @Environment(\.appLanguage) private var language
     @Environment(\.moneyFormatter) private var formatter
@@ -17,7 +19,7 @@ struct SpendingHeadline: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Kicker("Расходы за период")
+            Kicker(largeOnly ? "Крупные траты за период" : "Расходы за период")
             HeroAmount(money: report.summary.spending, token: .hero, secondaryToken: .title)
             if let sentence {
                 Text(verbatim: sentence)
@@ -734,6 +736,106 @@ struct UnusualExpensesCard: View {
         return Phrase(ru: "В \(ratio) раза больше обычного (обычно \(typical))",
                       uz: "Odatdagidan \(ratio) baravar ko‘p (odatda \(typical))",
                       en: "\(ratio)× the usual (typically \(typical))")(language)
+    }
+}
+
+// MARK: - Фильтр и список крупных трат
+
+/// Быстрый фильтр отчёта: все траты или только от выбранной суммы.
+struct ExpenseSizeFilter: View {
+    @Binding var minimum: Int
+    let currency: Currency
+
+    @Environment(\.moneyFormatter) private var formatter
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 8) {
+                chip(0, title: String(localized: "Все траты"))
+                ForEach(AnalyticsEngine.largeExpenseThresholds(for: currency), id: \.self) { value in
+                    let money = Money(major: Decimal(value), currency: currency) ?? .zero(currency)
+                    chip(value, title: String(localized: "от \(formatter.compact(money))"))
+                }
+            }
+            .padding(.vertical, 2)
+        }
+        .scrollIndicators(.hidden)
+        .accessibilityLabel(Text("Размер трат"))
+    }
+
+    private func chip(_ value: Int, title: String) -> some View {
+        Button {
+            Haptics.selection()
+            withMonoAnimation(.quick) { minimum = value }
+        } label: {
+            HStack(spacing: 6) {
+                if value > 0 && minimum == value {
+                    Image(systemName: "line.3.horizontal.decrease")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                Text(verbatim: title)
+            }
+        }
+        .buttonStyle(ChipStyle(isSelected: minimum == value))
+    }
+}
+
+/// Крупные траты периода — от самой большой, с переходом к операции.
+struct LargeExpensesCard: View {
+    let transactions: [FinanceTransaction]
+    let minimum: Money
+
+    @Environment(FinanceStore.self) private var store
+    @Environment(Router.self) private var router
+    @Environment(\.appLanguage) private var language
+    @Environment(\.moneyFormatter) private var formatter
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(kicker: "Фильтр", title: "Крупные траты")
+            Text(verbatim: subtitle)
+                .monoFont(.footnote)
+                .foregroundStyle(Color.mono.textSecondary)
+            if transactions.isEmpty {
+                Text("Таких трат за период нет.")
+                    .monoFont(.callout)
+                    .foregroundStyle(Color.mono.textTertiary)
+            }
+            ForEach(transactions) { transaction in
+                let category = transaction.categoryID.flatMap { store.categoryMap[$0] }
+                Button {
+                    router.open(.transaction(transaction.id))
+                } label: {
+                    HStack(spacing: 12) {
+                        CategoryGlyph(category: category, kind: transaction.kind, size: 38)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(verbatim: transaction.merchant ?? category?.name ?? transaction.kind.title(language))
+                                .monoFont(.body)
+                                .foregroundStyle(Color.mono.textPrimary)
+                                .lineLimit(1)
+                            Text(verbatim: [DateFormatting.dayTitle(transaction.date, calendar: store.periods.calendar, language: language),
+                                            category?.name].compactMap { $0 }.joined(separator: " · "))
+                                .monoFont(.caption)
+                                .foregroundStyle(Color.mono.textTertiary)
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: 8)
+                        MoneyText(money: transaction.amount, token: .amountRow)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PressableStyle(scale: 0.98))
+            }
+        }
+        .monoSurface(radius: MonoTokens.Radius.xl, padding: 18)
+    }
+
+    private var subtitle: String {
+        let limit = formatter.compact(minimum)
+        let count = transactions.count
+        return Phrase(ru: "Траты от \(limit): \(count). Итоги, категории и график ниже — только по ним.",
+                      uz: "\(limit) dan katta xarajatlar: \(count).",
+                      en: "Expenses from \(limit): \(count). Totals and charts below use only these.")(language)
     }
 }
 

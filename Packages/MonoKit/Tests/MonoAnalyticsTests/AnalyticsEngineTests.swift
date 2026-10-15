@@ -256,3 +256,22 @@ final class AnalyticsEngineTests: XCTestCase {
         XCTAssertEqual(AnalyticsEngine.twoSignificantDigits(15_000_000), 15_000_000)
     }
 }
+
+extension AnalyticsEngineTests {
+    func testFilteringLargeExpenses() {
+        let october = periods.monthRange(MonthKey(year: 2026, month: 10))
+        let large = engine(sample).filteringExpenses(atLeast: uzs(200_000))
+        let summary = large.summary(october)
+        XCTAssertEqual(summary.income, uzs(18_000_000), "доходы не фильтруются")
+        XCTAssertEqual(summary.grossExpenses, uzs(245_000 + 400_000), "85 000 и расход без курса отброшены")
+        XCTAssertEqual(summary.spending, uzs(245_000 + 400_000 - 100_000), "возврат остаётся")
+        XCTAssertEqual(summary.fees, uzs(0))
+        XCTAssertEqual(large.largestExpenses(october, limit: 10).map(\.amount), [uzs(400_000), uzs(245_000)])
+        XCTAssertEqual(large.summary(periods.monthRange(MonthKey(year: 2026, month: 9))).spending, uzs(300_000))
+    }
+
+    func testLargeExpenseThresholds() {
+        XCTAssertEqual(AnalyticsEngine.largeExpenseThresholds(for: .uzs).first, 100_000)
+        XCTAssertEqual(AnalyticsEngine.largeExpenseThresholds(for: .usd), [50, 100, 500, 1_000])
+    }
+}

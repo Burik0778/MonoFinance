@@ -24,7 +24,16 @@ struct MoneyText: View {
 
     private var displayText: String {
         if hideAmounts { return "••• •••" }
-        return compact ? formatter.compact(money, sign: sign) : formatter.string(money, sign: sign)
+        let text = compact ? formatter.compact(money, sign: sign) : formatter.string(money, sign: sign)
+        return token.tracking < -0.5 ? MoneySpacing.widened(text) : text
+    }
+}
+
+/// Узкий пробел между разрядами в крупных шрифтах с отрицательной разрядкой почти исчезает («31725793»).
+/// Для таких шрифтов разряды разделяются обычным неразрывным пробелом: «31 725 793».
+enum MoneySpacing {
+    static func widened(_ text: String) -> String {
+        text.replacingOccurrences(of: MoneyFormatter.groupSeparatorNarrow, with: MoneyFormatter.nbsp)
     }
 }
 
@@ -47,7 +56,7 @@ struct HeroAmount: View {
                     .foregroundStyle(color)
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
             } else {
-                Text(verbatim: parts.sign + (parts.symbolLeading ? parts.symbol : "") + parts.integerPart)
+                Text(verbatim: parts.sign + (parts.symbolLeading ? parts.symbol : "") + MoneySpacing.widened(parts.integerPart))
                     .monoFont(token, digits: true)
                     .foregroundStyle(color)
                     .contentTransition(.numericText(value: Double(money.minorUnits)))

@@ -91,10 +91,14 @@ struct AnalyticsView: View {
     @State private var scope: AnalyticsScope = .month
     @State private var month: MonthKey?
     @AppStorage("analytics.showsDetails") private var showsDetails = false
+    /// Фильтр «только крупные траты»: порог в основных единицах базовой валюты, 0 — все траты.
+    @AppStorage("analytics.minExpense") private var minExpense = 0
 
     var body: some View {
         let now = Date()
-        let analytics = store.analytics()
+        let fullAnalytics = store.analytics()
+        let minimum = minExpense > 0 ? Money(major: Decimal(minExpense), currency: fullAnalytics.base) : nil
+        let analytics = minimum.map { fullAnalytics.filteringExpenses(atLeast: $0) } ?? fullAnalytics
         let currentMonth = store.periods.monthKey(now)
         let selectedMonth = month ?? currentMonth
         let report = AnalyticsReport(analytics: analytics, scope: scope, month: selectedMonth, now: now)
@@ -103,6 +107,7 @@ struct AnalyticsView: View {
             VStack(alignment: .leading, spacing: 24) {
                 header
                 periodControls(selectedMonth: selectedMonth, currentMonth: currentMonth)
+                ExpenseSizeFilter(minimum: $minExpense, currency: fullAnalytics.base)
                 if store.transactions.isEmpty {
                     EmptyStateView(symbol: "chart.pie", title: "Пока нечего анализировать",
                                    message: "Добавьте операции вручную, голосом или импортом выписки — графики построятся по реальным данным.") {
@@ -115,15 +120,19 @@ struct AnalyticsView: View {
                     if !report.summary.excludedCurrencies.isEmpty {
                         MissingRatesNote(currencies: report.summary.excludedCurrencies)
                     }
-                    SpendingHeadline(report: report, scope: scope, month: selectedMonth)
+                    SpendingHeadline(report: report, scope: scope, month: selectedMonth, largeOnly: minimum != nil)
                         .riseIn()
                     if report.summary.isEmpty {
-                        Text("За этот период операций нет.")
+                        Text(minimum == nil ? "За этот период операций нет." : "За этот период крупных трат нет.")
                             .monoFont(.callout)
                             .foregroundStyle(Color.mono.textTertiary)
                             .frame(maxWidth: .infinity, minHeight: 120)
                     } else {
-                        InsightsSection(insights: InsightEngine(analytics: analytics, budgets: store.budgets, recurring: store.recurring, language: language, now: now).insights())
+                        if let minimum {
+                            LargeExpensesCard(transactions: analytics.largestExpenses(report.range, limit: 30), minimum: minimum)
+                        } else {
+                            InsightsSection(insights: InsightEngine(analytics: analytics, budgets: store.budgets, recurring: store.recurring, language: language, now: now).insights())
+                        }
                         CategoryDonutCard(items: report.categories, total: report.summary.spending, range: report.range)
                             .riseIn(delay: 0.05)
                         TrendCard(points: report.series, granularity: report.granularity, calendar: store.periods.calendar)
@@ -148,8 +157,8 @@ struct AnalyticsView: View {
                                     UnusualExpensesCard(items: report.unusual)
                                 }
                             }
-                            RecurringCandidatesCard(candidates: analytics.recurringCandidates(now: now))
-                            ForecastCard(forecast: analytics.savingsForecast(months: 3, now: now, planned: store.planned))
+                            RecurringCandidatesCard(candidates: fullAnalytics.recurringCandidates(now: now))
+                            ForecastCard(forecast: fullAnalytics.savingsForecast(months: 3, now: now, planned: store.planned))
                         }
                         .transition(.opacity.combined(with: .move(edge: .top)))
                     }
