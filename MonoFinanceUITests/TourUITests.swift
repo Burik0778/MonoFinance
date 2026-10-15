@@ -60,9 +60,9 @@ final class TourUITests: XCTestCase {
         let voiceSaved = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] 'адидас' OR label CONTAINS[c] 'adidas'")).firstMatch
         XCTAssertTrue(voiceSaved.waitForExistence(timeout: 3), "Операция из голосовой фразы не появилась в ленте")
 
-        // Главная: лента операций — открываем первую операцию и возвращаемся.
-        let firstRow = app.buttons.matching(NSPredicate(format: "label CONTAINS 'сум'")).element(boundBy: 1)
-        if tap(firstRow) {
+        // Главная: открываем только что сохранённую голосом операцию и возвращаемся.
+        let savedRow = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'адидас' OR label CONTAINS[c] 'adidas'")).firstMatch
+        if tap(savedRow) {
             wait(2)
             XCTAssertTrue(app.navigationBars["Операция"].waitForExistence(timeout: 3), "Карточка операции не открылась")
             back()

@@ -296,7 +296,7 @@ private struct MonthLimitLine: View {
             } label: {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(status.remaining.isNegative ? "Лимит превышен на" : "До лимита месяца")
+                        Text(status.remaining.isNegative ? "Лимит превышен на" : "Осталось")
                             .monoFont(.footnote)
                             .foregroundStyle(Color.mono.textSecondary)
                         MoneyText(money: status.remaining.magnitude, token: .subhead,
@@ -307,6 +307,7 @@ private struct MonthLimitLine: View {
                             Text("в день")
                                 .monoFont(.caption)
                                 .foregroundStyle(Color.mono.textTertiary)
+                                .fixedSize()
                         }
                         Image(systemName: "chevron.right")
                             .font(.system(size: 10, weight: .bold))

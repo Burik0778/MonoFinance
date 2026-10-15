@@ -127,7 +127,7 @@ struct AccountScopeSheet: View {
                         row(id: account.id.uuidString,
                             thumbnail: AnyView(CardThumbnail(skin: account.skin, width: 40)),
                             title: account.displayName,
-                            subtitle: [account.bank.isBank ? account.bank.displayName : account.kind.title(language), account.maskedNumber].compactMap { $0 }.joined(separator: " · "),
+                            subtitle: [account.bank.isBank ? account.bank.shortName : account.kind.title(language), account.maskedNumber].compactMap { $0 }.joined(separator: " · "),
                             money: store.balance(of: account))
                     }
                 }
