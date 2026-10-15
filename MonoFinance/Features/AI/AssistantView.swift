@@ -302,36 +302,31 @@ private struct ExchangeView: View {
         }
     }
 
+    /// Ответ нейросети — карточка: кто ответил, затем текст, разобранный на заголовки, абзацы, списки и таблицы.
     private func replyView(_ reply: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Capsule(style: .continuous)
-                .fill(Color.mono.accent)
-                .frame(width: 3)
-            VStack(alignment: .leading, spacing: 8) {
-                Text(Self.formatted(reply))
-                    .monoFont(.callout)
-                    .foregroundStyle(Color.mono.textPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
-                    .blur(radius: hideAmounts ? 6 : 0)
-                if let name = exchange.providerName {
-                    Text("Ответила нейросеть · \(name)")
-                        .monoFont(.caption)
-                        .foregroundStyle(Color.mono.textTertiary)
-                }
-                if let notice = exchange.notice {
-                    Text(verbatim: notice)
-                        .monoFont(.caption)
-                        .foregroundStyle(Color.mono.warning)
-                }
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.mono.accentText)
+                Text(verbatim: exchange.providerName ?? "Нейросеть")
+                    .monoFont(.caption)
+                    .foregroundStyle(Color.mono.textSecondary)
+                Spacer(minLength: 0)
+            }
+            ChatReplyContent(blocks: ChatMarkdown.blocks(from: reply))
+                .blur(radius: hideAmounts ? 6 : 0)
+                .textSelection(.enabled)
+            if let notice = exchange.notice {
+                Label { Text(verbatim: notice) } icon: { Image(systemName: "arrow.triangle.branch") }
+                    .monoFont(.caption)
+                    .foregroundStyle(Color.mono.warning)
             }
         }
-    }
-
-    /// Ответ нейросети: жирный и курсив из Markdown, переносы строк сохраняются.
-    static func formatted(_ reply: String) -> AttributedString {
-        let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        return (try? AttributedString(markdown: reply, options: options)) ?? AttributedString(reply)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.lg, style: .continuous).fill(Color.mono.surface1))
+        .overlay(RoundedRectangle(cornerRadius: MonoTokens.Radius.lg, style: .continuous).strokeBorder(Color.mono.strokeSubtle, lineWidth: 1))
     }
 
     private func localAnswerView(_ answer: AssistantAnswer) -> some View {
@@ -408,5 +403,114 @@ private struct ExchangeView: View {
         case .positive: return Color.mono.positive
         case .negative: return Color.mono.negative
         }
+    }
+}
+
+/// Текст ответа нейросети без сырой разметки: заголовки, абзацы, списки с точками и таблицы-карточки.
+private struct ChatReplyContent: View {
+    let blocks: [ChatBlock]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
+                blockView(block)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func blockView(_ block: ChatBlock) -> some View {
+        switch block {
+        case .heading(let text):
+            Text(Self.inline(text))
+                .monoFont(.headline)
+                .foregroundStyle(Color.mono.textPrimary)
+                .padding(.top, 2)
+                .fixedSize(horizontal: false, vertical: true)
+        case .paragraph(let text):
+            Text(Self.inline(text))
+                .monoFont(.callout)
+                .foregroundStyle(Color.mono.textPrimary)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+        case .bullets(let items):
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Circle()
+                            .fill(Color.mono.accent)
+                            .frame(width: 6, height: 6)
+                            .alignmentGuide(.firstTextBaseline) { $0[.bottom] + 1 }
+                        Text(Self.inline(item))
+                            .monoFont(.callout)
+                            .foregroundStyle(Color.mono.textPrimary)
+                            .lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        case .numbered(let items):
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text(verbatim: "\(index + 1)")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(Color.mono.accentText)
+                            .frame(minWidth: 16, alignment: .trailing)
+                        Text(Self.inline(item))
+                            .monoFont(.callout)
+                            .foregroundStyle(Color.mono.textPrimary)
+                            .lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        case .table(let headers, let rows):
+            tableView(headers: headers, rows: rows)
+        }
+    }
+
+    /// Таблица на узком экране: каждая строка — карточка; первая ячейка — заголовок, остальные — «подпись: значение».
+    private func tableView(headers: [String], rows: [[String]]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(Self.inline(row.first ?? ""))
+                        .monoFont(.body)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(Color.mono.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    ForEach(Array(zip(headers.dropFirst(), row.dropFirst()).enumerated()), id: \.offset) { _, pair in
+                        if !pair.1.isEmpty {
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Text(verbatim: pair.0)
+                                    .monoFont(.caption)
+                                    .foregroundStyle(Color.mono.textTertiary)
+                                Spacer(minLength: 8)
+                                Text(Self.inline(pair.1))
+                                    .monoFont(.callout, digits: true)
+                                    .foregroundStyle(Color.mono.textPrimary)
+                                    .multilineTextAlignment(.trailing)
+                            }
+                        }
+                    }
+                }
+                .padding(.vertical, 10)
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .overlay(alignment: .top) {
+                    if index > 0 {
+                        Rectangle().fill(Color.mono.strokeSubtle).frame(height: 1)
+                    }
+                }
+            }
+        }
+        .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.surface2))
+    }
+
+    /// Строчная разметка: жирный, курсив; переносы строк сохраняются.
+    static func inline(_ text: String) -> AttributedString {
+        let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
     }
 }
