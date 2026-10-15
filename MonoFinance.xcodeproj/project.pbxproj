@@ -43,6 +43,7 @@
 		8557C27B656705491C68BA3C /* TransactionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CA28C4C3413655BDBFFEC0B /* TransactionDetailView.swift */; };
 		8AB30564085C88893364F8DB /* BackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BFA167BB0F97A8997FEF44A /* BackupService.swift */; };
 		958C922E5F9E0B12FC0BE31F /* MonoFinanceApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 567154991313D5353F5F57E5 /* MonoFinanceApp.swift */; };
+		96F8C73117685AA637FD9369 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 5DE107F6A592C2441A3BB02F /* Localizable.xcstrings */; };
 		98CBACA93CB7BDA1E40752C0 /* ImportFlowModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC45BE32C14542E944FD91FA /* ImportFlowModel.swift */; };
 		A53FA49012C8B77441B95A96 /* Tokens.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = BABFA02B5DD99E9358C7DEC9 /* Tokens.generated.swift */; };
 		A86BC7FB75723F67C762D1AA /* AccountEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E0C8C165D0D80CE4ABA13F7 /* AccountEditorView.swift */; };
@@ -92,6 +93,7 @@
 		574C76D52EB5CF65579556DE /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		58F1035C4CAC967532BCD5DB /* OverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewView.swift; sourceTree = "<group>"; };
 		5BFA167BB0F97A8997FEF44A /* BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupService.swift; sourceTree = "<group>"; };
+		5DE107F6A592C2441A3BB02F /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		600AF763355A68B7741D8E80 /* VoiceCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCaptureView.swift; sourceTree = "<group>"; };
 		62EDDEB69FE4FD82BD992686 /* VoiceDraftCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceDraftCard.swift; sourceTree = "<group>"; };
 		6346D4492B71EF7920BDB038 /* DemoData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoData.swift; sourceTree = "<group>"; };
@@ -338,6 +340,7 @@
 			isa = PBXGroup;
 			children = (
 				867D79CE09638D255145B3F4 /* Assets.xcassets */,
+				5DE107F6A592C2441A3BB02F /* Localizable.xcstrings */,
 				72694BA40AF05BEF790A7CA7 /* PrivacyInfo.xcprivacy */,
 			);
 			path = Resources;
@@ -461,6 +464,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AC3D170238DEE9C7DC45975D /* Assets.xcassets in Resources */,
+				96F8C73117685AA637FD9369 /* Localizable.xcstrings in Resources */,
 				C671399408F643DFD343ACF4 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
