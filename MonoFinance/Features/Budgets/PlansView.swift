@@ -364,9 +364,9 @@ private struct PlannedSection: View {
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Color.mono.warning)
+                        .foregroundStyle(Color.mono.accentText)
                         .frame(width: 36, height: 36)
-                        .background(Circle().fill(Color.mono.warning.opacity(0.12)))
+                        .background(Circle().fill(Color.mono.accent.opacity(0.12)))
                 }
                 .accessibilityLabel(Text("Запланировать трату"))
             }

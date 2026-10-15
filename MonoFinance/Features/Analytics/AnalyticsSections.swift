@@ -814,7 +814,7 @@ struct ForecastCard: View {
                     figure(Phrase(ru: "Доход/мес", uz: "Daromad/oy", en: "Income/mo")(language), forecast.averageIncome, Color.mono.positive)
                     figure(Phrase(ru: "Расход/мес", uz: "Xarajat/oy", en: "Spend/mo")(language), forecast.averageOutflow, Color.mono.textPrimary)
                     if forecast.plannedExpenses.isPositive {
-                        figure(Phrase(ru: "План", uz: "Reja", en: "Planned")(language), forecast.plannedExpenses, Color.mono.warning)
+                        figure(Phrase(ru: "План", uz: "Reja", en: "Planned")(language), forecast.plannedExpenses, Color.mono.textPrimary)
                     }
                 }
                 Text(verbatim: basisText)

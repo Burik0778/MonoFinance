@@ -168,11 +168,13 @@ struct TransactionsView: View {
                 Chart(days) { point in
                     BarMark(x: .value("День", point.date, unit: .day), y: .value("Расход", point.outflow.chartValue), width: .ratio(0.6))
                         .clipShape(RoundedRectangle(cornerRadius: 1.5, style: .continuous))
-                        .foregroundStyle(store.periods.calendar.isDate(point.date, inSameDayAs: today) ? Color.mono.accentText : Color.mono.accent.opacity(point.date > today ? 0.0 : 0.45))
+                        .foregroundStyle(store.periods.calendar.isDate(point.date, inSameDayAs: today) ? Color.mono.accentText : Color.mono.accent.opacity(0.75))
                 }
+                // Корневая шкала: один крупный платёж (аренда) не «съедает» остальные дни.
+                .chartYScale(type: .squareRoot)
                 .chartXAxis(.hidden)
                 .chartYAxis(.hidden)
-                .frame(height: 44)
+                .frame(height: 52)
                 .accessibilityLabel(Text("Расходы по дням месяца"))
             }
         }

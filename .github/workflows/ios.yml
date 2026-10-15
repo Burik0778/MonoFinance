@@ -165,6 +165,10 @@ jobs:
           shoot 10-onboarding -monoOnboarding
           shoot 11-import -monoSheet import
           shoot 12-goal -monoRoute goal
+          shoot 13-accounts -monoRoute accounts
+          shoot 14-transaction -monoRoute transaction
+          shoot 15-categories -monoRoute categories
+          shoot 16-transfer -monoSheet transfer
           ls -la shots
       - name: Publish screenshots to ci-shots branch
         if: always()

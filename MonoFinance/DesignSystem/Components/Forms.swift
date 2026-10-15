@@ -292,9 +292,7 @@ struct AccountPickerMenu: View {
         } label: {
             HStack(spacing: 12) {
                 if let selected = selection.flatMap({ store.accountMap[$0] }) {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(selected.skin.linearGradient)
-                        .frame(width: 36, height: 24)
+                    CardThumbnail(skin: selected.skin, width: 38)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(verbatim: selected.displayName).monoFont(.body).foregroundStyle(Color.mono.textPrimary)
                         MoneyText(money: store.balance(of: selected), token: .caption, color: Color.mono.textSecondary)

@@ -49,6 +49,37 @@ final class VoiceParserTests: XCTestCase {
         XCTAssertEqual(day(draft.date), day(now))
     }
 
+    /// Фразы ровно в той формулировке, в какой их дал владелец приложения.
+    func testOwnerExamplesVerbatim() {
+        let lunch = parser().parse("Потратил 85 тысяч на обед").drafts
+        XCTAssertEqual(lunch.count, 1)
+        XCTAssertEqual(lunch.first?.kind, .expense)
+        XCTAssertEqual(lunch.first?.amount, 85_000)
+        XCTAssertEqual(lunch.first?.categoryID, cat(SystemCategoryKey.cafe))
+        XCTAssertEqual(lunch.first.map { day($0.date) }, day(now))
+
+        let groceries = parser(defaultAccount: uzum.id).parse("Вчера купил продукты на 230 тысяч с Капиталбанка").drafts
+        XCTAssertEqual(groceries.count, 1)
+        XCTAssertEqual(groceries.first?.amount, 230_000)
+        XCTAssertEqual(groceries.first?.categoryID, cat(SystemCategoryKey.groceries))
+        XCTAssertEqual(groceries.first?.accountID, kapital.id)
+        XCTAssertEqual(groceries.first.map { day($0.date) }, day(periods.addingDays(-1, to: now)))
+
+        let transfer = parser().parse("Перевёл миллион сум с Капиталбанка на Узум").drafts
+        XCTAssertEqual(transfer.count, 1)
+        XCTAssertEqual(transfer.first?.kind, .transfer, "Перевод между своими счетами — не расход")
+        XCTAssertEqual(transfer.first?.amount, 1_000_000)
+        XCTAssertEqual(transfer.first?.accountID, kapital.id)
+        XCTAssertEqual(transfer.first?.counterAccountID, uzum.id)
+
+        let two = parser().parse("Сегодня потратил 120 тысяч на такси и 50 тысяч на кофе").drafts
+        XCTAssertEqual(two.count, 2)
+        XCTAssertEqual(two.map(\.amount), [120_000, 50_000])
+        XCTAssertEqual(two.first?.categoryID, cat(SystemCategoryKey.taxi))
+        XCTAssertEqual(two.last?.categoryID, cat(SystemCategoryKey.cafe))
+        XCTAssertTrue(two.allSatisfy { $0.kind == .expense && $0.isReady })
+    }
+
     func testFuel() {
         let draft = parser().parse("Заправился на 300 тысяч").drafts[0]
         XCTAssertEqual(draft.kind, .expense)

@@ -44,27 +44,24 @@ struct OnboardingView: View {
         .monoAnimation(.emphasized, value: step)
     }
 
-    private var tint: Color {
-        switch step {
-        case 0: return Color.mono.accent
-        case 1: return Color.mono.accent
-        case 2: return Color.mono.accent
-        default: return Color.mono.positive
-        }
-    }
-
     // MARK: - Знакомство
 
     private var welcome: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Spacer()
-            VStack(alignment: .leading, spacing: 18) {
+            Spacer(minLength: 12)
+            CardStackIllustration()
+                .frame(height: 190)
+                .frame(maxWidth: .infinity)
+            Spacer(minLength: 12)
+            VStack(alignment: .leading, spacing: 16) {
                 Text(verbatim: "MONO")
-                    .font(.system(size: 64, weight: .heavy).width(.expanded))
-                    .foregroundStyle(Color.mono.textPrimary)
+                    .font(.system(size: 22, weight: .heavy).width(.expanded))
+                    .tracking(2)
+                    .foregroundStyle(Color.mono.accentText)
                     .accessibilityAddTraits(.isHeader)
                 Text("Все ваши деньги — в одной ясной картине.")
-                    .font(.system(size: 34, weight: .semibold, design: .default))
+                    .font(.system(size: 34, weight: .bold, design: .default))
+                    .tracking(-1)
                     .foregroundStyle(Color.mono.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
                 VStack(alignment: .leading, spacing: 14) {
@@ -119,21 +116,26 @@ struct OnboardingView: View {
                         HStack(spacing: 14) {
                             Text(verbatim: option.code)
                                 .font(.system(size: 20, weight: .bold).width(.expanded))
-                                .foregroundStyle(currency == option ? Color.white : Color.mono.textPrimary)
+                                .foregroundStyle(Color.mono.textPrimary)
                                 .frame(width: 70, alignment: .leading)
                             Text(verbatim: currencyName(option))
                                 .monoFont(.body)
-                                .foregroundStyle(currency == option ? Color.white.opacity(0.85) : Color.mono.textSecondary)
+                                .foregroundStyle(Color.mono.textSecondary)
                             Spacer()
-                            if currency == option {
-                                Image(systemName: "checkmark.circle.fill").foregroundStyle(.white)
-                            }
+                            Image(systemName: currency == option ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 20))
+                                .foregroundStyle(currency == option ? Color.mono.accentText : Color.mono.textTertiary)
+                                .contentTransition(.symbolEffect(.replace))
                         }
                         .padding(.horizontal, 18)
                         .frame(minHeight: 62)
                         .background(
                             RoundedRectangle(cornerRadius: MonoTokens.Radius.lg, style: .continuous)
-                                .fill(currency == option ? AnyShapeStyle(Color.mono.accent) : AnyShapeStyle(Color.mono.surface1))
+                                .fill(currency == option ? Color.mono.accentWash : Color.mono.surface1)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: MonoTokens.Radius.lg, style: .continuous)
+                                .strokeBorder(currency == option ? Color.mono.accent.opacity(0.6) : Color.mono.strokeSubtle, lineWidth: 1)
                         )
                     }
                     .buttonStyle(PressableStyle(scale: 0.98))
@@ -231,11 +233,11 @@ struct OnboardingView: View {
                                 .foregroundStyle(Color.mono.textSecondary)
                         }
                     }
-                    .tint(Color.mono.positive)
+                    .tint(Color.mono.accent)
                     .padding(14)
                     .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.surface1))
                 }
-                ToggleRow(title: "Скрывать суммы при запуске", subtitle: "Удобно, если показываете экран другим", isOn: Binding(get: { settings.hideAmountsOnLaunch }, set: { settings.hideAmountsOnLaunch = $0 }), tint: Color.mono.positive)
+                ToggleRow(title: "Скрывать суммы при запуске", subtitle: "Удобно, если показываете экран другим", isOn: Binding(get: { settings.hideAmountsOnLaunch }, set: { settings.hideAmountsOnLaunch = $0 }), tint: Color.mono.accent)
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: "mic.fill")
                         .foregroundStyle(Color.mono.accentText)
@@ -285,5 +287,37 @@ struct OnboardingView: View {
             lock.disable()
             lockEnabled = false
         }
+    }
+}
+
+/// Веер из трёх абстрактных карт для экрана знакомства: материалы MONO без цифр и логотипов.
+private struct CardStackIllustration: View {
+    @State private var spread = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        ZStack {
+            card(.graphite, angle: -14, x: -46, y: 18)
+            card(.lagoon, angle: -4, x: 0, y: 4)
+            card(.aurora, angle: 8, x: 48, y: -10)
+        }
+        .onAppear {
+            withAnimation(Motion.animation(.gentle, reduceMotion: reduceMotion).delay(0.15)) { spread = true }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func card(_ skin: CardSkin, angle: Double, x: CGFloat, y: CGFloat) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+        return CardSkinBackground(skin: skin)
+            .frame(width: 220, height: 220 / 1.586)
+            .clipShape(shape)
+            .overlay(alignment: .topLeading) {
+                CardChip().padding(18).padding(.top, 26)
+            }
+            .overlay(shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.22), .white.opacity(0.04)], startPoint: .top, endPoint: .bottom), lineWidth: 1))
+            .shadow(color: .black.opacity(0.45), radius: 18, x: 0, y: 12)
+            .rotationEffect(.degrees(spread || reduceMotion ? angle : 0))
+            .offset(x: spread || reduceMotion ? x : 0, y: spread || reduceMotion ? y : 0)
     }
 }

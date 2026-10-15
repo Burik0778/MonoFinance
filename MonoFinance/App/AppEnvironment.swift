@@ -60,6 +60,13 @@ final class AppEnvironment {
             if let account = store.activeAccounts.first { router.overviewPath.append(Route.account(account.id)) }
         case "settings":
             router.overviewPath.append(Route.settings)
+        case "accounts":
+            router.overviewPath.append(Route.accounts)
+        case "transaction":
+            if let transaction = store.transactions.first(where: { $0.kind == .expense && $0.merchant != nil }) {
+                router.tab = .transactions
+                router.transactionsPath.append(Route.transaction(transaction.id))
+            }
         case "categories":
             router.overviewPath.append(Route.categories)
         case "goal":

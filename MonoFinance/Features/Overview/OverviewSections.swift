@@ -219,7 +219,7 @@ struct AccountsSection: View {
     }
 
     private func subtitle(_ account: Account) -> String {
-        var parts = [account.bank.displayName]
+        var parts = [account.bank.isBank ? account.bank.shortName : account.kind.title(language)]
         if let masked = account.maskedNumber { parts.append(masked) }
         if !account.includeInTotal { parts.append(Phrase(ru: "не в итоге", uz: "jamida emas", en: "not in total")(language)) }
         return parts.joined(separator: " · ")

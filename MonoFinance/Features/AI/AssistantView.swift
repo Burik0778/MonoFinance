@@ -78,7 +78,7 @@ struct AssistantView: View {
 
     private var intro: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Kicker("Ассистент", color: Color.mono.accent)
+            Kicker("Ассистент", color: Color.mono.accentText)
             Text("Спросите о своих деньгах")
                 .monoFont(.display)
                 .foregroundStyle(Color.mono.textPrimary)
@@ -240,7 +240,7 @@ private struct ExchangeView: View {
 
                 if let explanation = exchange.explanation {
                     VStack(alignment: .leading, spacing: 6) {
-                        Kicker("Пояснение модели", color: Color.mono.accent)
+                        Kicker("Пояснение модели", color: Color.mono.accentText)
                         Text(verbatim: explanation)
                             .monoFont(.callout)
                             .foregroundStyle(Color.mono.textPrimary)
