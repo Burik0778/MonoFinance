@@ -23,8 +23,6 @@
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>ru</string>
-		<string>uz</string>
-		<string>en</string>
 	</array>
 	<key>CFBundleURLTypes</key>
 	<array>

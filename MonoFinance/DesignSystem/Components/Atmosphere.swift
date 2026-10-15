@@ -134,23 +134,9 @@ struct OrbitIllustration: View {
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { timeline in
-            let t = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
+            let time: Double = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
             Canvas { context, size in
-                let center = CGPoint(x: size.width / 2, y: size.height / 2)
-                let colors: [Color] = [Color.mono.electric, Color.mono.violet, Color.mono.cyan]
-                for index in 0..<3 {
-                    let radius = size.width * (0.22 + CGFloat(index) * 0.13)
-                    let ring = Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2))
-                    context.stroke(ring, with: .color(Color.mono.strokeStrong), lineWidth: 1)
-                    let angle = t * (0.5 - Double(index) * 0.13) + Double(index) * 2.1
-                    let point = CGPoint(x: center.x + cos(angle) * radius, y: center.y + sin(angle) * radius)
-                    let dot = Path(ellipseIn: CGRect(x: point.x - 4, y: point.y - 4, width: 8, height: 8))
-                    context.drawLayer { layer in
-                        layer.addFilter(.blur(radius: 4))
-                        layer.fill(dot, with: .color(colors[index]))
-                    }
-                    context.fill(dot, with: .color(colors[index]))
-                }
+                Self.draw(in: &context, size: size, time: time)
             }
             .overlay {
                 Image(systemName: symbol)
@@ -159,6 +145,31 @@ struct OrbitIllustration: View {
             }
         }
         .accessibilityHidden(true)
+    }
+
+    /// Отрисовка вынесена в функцию с явными типами: так компилятор быстро проверяет выражения.
+    private static func draw(in context: inout GraphicsContext, size: CGSize, time: Double) {
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+        let colors: [Color] = [Color.mono.electric, Color.mono.violet, Color.mono.cyan]
+        for index in 0..<3 {
+            let step = CGFloat(index)
+            let radius: CGFloat = size.width * (0.22 + step * 0.13)
+            let ringRect = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
+            context.stroke(Path(ellipseIn: ringRect), with: .color(Color.mono.strokeStrong), lineWidth: 1)
+
+            let speed: Double = 0.5 - Double(index) * 0.13
+            let angle: Double = time * speed + Double(index) * 2.1
+            let dx: CGFloat = CGFloat(cos(angle)) * radius
+            let dy: CGFloat = CGFloat(sin(angle)) * radius
+            let dotRect = CGRect(x: center.x + dx - 4, y: center.y + dy - 4, width: 8, height: 8)
+            let dot = Path(ellipseIn: dotRect)
+            let color = colors[index]
+            context.drawLayer { layer in
+                layer.addFilter(.blur(radius: 4))
+                layer.fill(dot, with: .color(color))
+            }
+            context.fill(dot, with: .color(color))
+        }
     }
 }
 

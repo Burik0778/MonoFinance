@@ -22,6 +22,17 @@ final class AppEnvironment {
 
     init() {
         let settings = SettingsStore()
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        let screenshots = arguments.contains("-monoScreenshots")
+        if screenshots {
+            // Снимки экрана в симуляторе (CI): только демо-база, без блокировки.
+            settings.demoMode = true
+            settings.onboardingCompleted = !arguments.contains("-monoOnboarding")
+            settings.appLockEnabled = false
+            settings.hideAmounts = false
+        }
+        #endif
         self.settings = settings
         self.lock = AppLock(settings: settings)
         do {
@@ -31,7 +42,47 @@ final class AppEnvironment {
             // Временная база в памяти, чтобы интерфейс мог показать ошибку; настоящие данные не изменяются.
             self.store = FinanceStore(database: try! LedgerDatabase.inMemory(), isDemo: false)
         }
+        #if DEBUG
+        if screenshots { applyScreenshotRoute(arguments) }
+        #endif
     }
+
+    #if DEBUG
+    /// Открывает нужный экран по аргументам запуска: `-monoTab analytics`, `-monoRoute account`, `-monoSheet import`, `-monoVoice "фраза"`.
+    private func applyScreenshotRoute(_ arguments: [String]) {
+        func value(after flag: String) -> String? {
+            guard let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1) else { return nil }
+            return arguments[index + 1]
+        }
+        if let tab = value(after: "-monoTab").flatMap(AppTab.init(rawValue:)) { router.tab = tab }
+        switch value(after: "-monoRoute") {
+        case "account":
+            if let account = store.activeAccounts.first { router.overviewPath.append(Route.account(account.id)) }
+        case "settings":
+            router.overviewPath.append(Route.settings)
+        case "categories":
+            router.overviewPath.append(Route.categories)
+        case "goal":
+            if let goal = store.goals.first {
+                router.tab = .plans
+                router.plansPath.append(Route.goal(goal.id))
+            }
+        default:
+            break
+        }
+        if let phrase = value(after: "-monoVoice") {
+            router.sheet = .voice(prefill: phrase)
+        }
+        switch value(after: "-monoSheet") {
+        case "import": router.sheet = .importStatement(nil)
+        case "assistant": router.sheet = .assistant
+        case "expense": router.sheet = .transaction(TransactionEditorContext(kind: .expense))
+        case "transfer": router.sheet = .transaction(TransactionEditorContext(kind: .transfer))
+        case "account": router.sheet = .account(nil)
+        default: break
+        }
+    }
+    #endif
 
     static var dataDirectory: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]

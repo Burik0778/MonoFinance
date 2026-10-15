@@ -99,3 +99,76 @@ jobs:
             --prerelease \
             --title "MONO — последняя сборка" \
             --notes "Неподписанный .ipa для установки через Sideloadly (Windows/macOS). Коммит ${GITHUB_SHA::7}."
+
+  screenshots:
+    name: Simulator screenshots
+    runs-on: macos-15
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v5
+      - name: Select Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | grep -iv beta | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - name: Build for simulator
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project MonoFinance.xcodeproj \
+            -scheme MonoFinance \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build-sim \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee sim.log | grep -E 'error:|BUILD SUCCEEDED|BUILD FAILED' | head -200
+      - name: Capture screens
+        run: |
+          APP=build-sim/Build/Products/Debug-iphonesimulator/MonoFinance.app
+          xcrun simctl list devices available
+          UDID=$(xcrun simctl list devices available | grep -E 'iPhone 1[6-9] Pro \(' | head -1 | grep -oE '[0-9A-F]{8}-[0-9A-F-]{27}')
+          if [ -z "$UDID" ]; then UDID=$(xcrun simctl list devices available | grep 'iPhone' | head -1 | grep -oE '[0-9A-F]{8}-[0-9A-F-]{27}'); fi
+          echo "Device: $UDID"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl ui "$UDID" appearance dark || true
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true
+          xcrun simctl install "$UDID" "$APP"
+          mkdir -p shots
+          shoot() {
+            name=$1; shift
+            xcrun simctl terminate "$UDID" uz.mono.finance >/dev/null 2>&1 || true
+            xcrun simctl launch "$UDID" uz.mono.finance -AppleLanguages "(ru)" -AppleLocale ru_RU -monoScreenshots "$@" || true
+            sleep 8
+            xcrun simctl io "$UDID" screenshot "shots/$name.png" || true
+          }
+          shoot 01-overview -monoTab overview
+          shoot 02-transactions -monoTab transactions
+          shoot 03-analytics -monoTab analytics
+          shoot 04-plans -monoTab plans
+          shoot 05-voice -monoVoice "Сегодня потратил 120 тысяч на такси и 75 тысяч на кофе с карты Капиталбанка"
+          shoot 06-account -monoRoute account
+          shoot 07-expense -monoSheet expense
+          shoot 08-assistant -monoSheet assistant
+          shoot 09-settings -monoRoute settings
+          shoot 10-onboarding -monoOnboarding
+          shoot 11-import -monoSheet import
+          shoot 12-goal -monoRoute goal
+          ls -la shots
+      - name: Publish screenshots to ci-shots branch
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p /tmp/shots
+          cp -R shots/. /tmp/shots/ 2>/dev/null || true
+          sed "s|$GITHUB_WORKSPACE/||g" sim.log | grep -E ' error: | warning: ' | sort -u > /tmp/shots/sim-errors.txt || true
+          echo "${GITHUB_SHA}" > /tmp/shots/commit.txt
+          cd /tmp/shots
+          git init -q -b ci-shots
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -qm "Screenshots ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-shots

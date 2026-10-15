@@ -47,6 +47,11 @@ public struct AuditEntry: Identifiable, Hashable, Sendable {
 public struct ImportWriteResult: Equatable, Sendable {
     public var inserted: Int
     public var skippedDuplicates: Int
+
+    public init(inserted: Int, skippedDuplicates: Int) {
+        self.inserted = inserted
+        self.skippedDuplicates = skippedDuplicates
+    }
 }
 
 /// Сохранённый профиль сопоставления колонок (формат задаёт модуль импорта).
