@@ -765,13 +765,9 @@ struct RecurringCandidatesCard: View {
                                 .monoFont(.body)
                                 .foregroundStyle(Color.mono.textPrimary)
                                 .lineLimit(1)
-                            HStack(spacing: 4) {
-                                Text(verbatim: candidate.frequency.title(language))
-                                Text(verbatim: "·")
-                                Text(verbatim: Phrase(ru: "далее", uz: "keyingi", en: "next")(language))
-                                Text(verbatim: DateFormatting.short(candidate.nextExpectedDate, calendar: store.periods.calendar, language: language))
-                            }
-                            .monoFont(.caption)
+                            Text(verbatim: "\(candidate.frequency.title(language)) · \(Phrase(ru: "далее", uz: "keyingi", en: "next")(language)) \(DateFormatting.short(candidate.nextExpectedDate, calendar: store.periods.calendar, language: language))")
+                                .lineLimit(2)
+                                .monoFont(.caption)
                             .foregroundStyle(Color.mono.textTertiary)
                         }
                         Spacer(minLength: 8)
@@ -813,11 +809,11 @@ struct ForecastCard: View {
                 SectionHeader(kicker: "Прогноз", title: "Накопления за 3 месяца")
                 HeroAmount(money: forecast.projectedSavings, token: .display, secondaryToken: .title2,
                            color: forecast.projectedSavings.isNegative ? Color.mono.coral : Color.mono.emerald)
-                HStack(spacing: 18) {
-                    figure(Phrase(ru: "Доход в месяц", uz: "Oylik daromad", en: "Monthly income")(language), forecast.averageIncome, Color.mono.emerald)
-                    figure(Phrase(ru: "Расход в месяц", uz: "Oylik xarajat", en: "Monthly spending")(language), forecast.averageOutflow, Color.mono.textPrimary)
+                HStack(alignment: .top, spacing: 12) {
+                    figure(Phrase(ru: "Доход/мес", uz: "Daromad/oy", en: "Income/mo")(language), forecast.averageIncome, Color.mono.emerald)
+                    figure(Phrase(ru: "Расход/мес", uz: "Xarajat/oy", en: "Spend/mo")(language), forecast.averageOutflow, Color.mono.textPrimary)
                     if forecast.plannedExpenses.isPositive {
-                        figure(Phrase(ru: "Запланировано", uz: "Rejalashtirilgan", en: "Planned")(language), forecast.plannedExpenses, Color.mono.tangerine)
+                        figure(Phrase(ru: "План", uz: "Reja", en: "Planned")(language), forecast.plannedExpenses, Color.mono.tangerine)
                     }
                 }
                 Text(verbatim: basisText)
@@ -841,8 +837,11 @@ struct ForecastCard: View {
                 .textCase(.uppercase)
                 .monoFont(.kicker)
                 .foregroundStyle(Color.mono.textTertiary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
             MoneyText(money: money, token: .callout, color: color, compact: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var basisText: String {

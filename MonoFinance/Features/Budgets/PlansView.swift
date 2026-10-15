@@ -490,12 +490,9 @@ struct RecurringRuleRow: View {
                     .monoFont(.body)
                     .foregroundStyle(rule.isActive ? Color.mono.textPrimary : Color.mono.textTertiary)
                     .lineLimit(1)
-                HStack(spacing: 4) {
-                    Text(verbatim: frequencyText)
-                    Text(verbatim: "·")
-                    Text(verbatim: DateFormatting.dayTitle(rule.nextDueDate, now: now, calendar: store.periods.calendar, language: language))
-                }
-                .monoFont(.caption)
+                Text(verbatim: "\(frequencyText) · \(DateFormatting.dayTitle(rule.nextDueDate, now: now, calendar: store.periods.calendar, language: language))")
+                    .lineLimit(2)
+                    .monoFont(.caption)
                 .foregroundStyle(rule.nextDueDate < now && rule.isActive ? Color.mono.tangerine : Color.mono.textTertiary)
             }
             Spacer(minLength: 8)

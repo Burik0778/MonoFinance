@@ -28,13 +28,6 @@ struct RootView: View {
         .environment(\.hideAmounts, settings.hideAmounts)
         .environment(\.moneyFormatter, MoneyFormatter(language: language))
         .environment(\.appLanguage, language)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            if store.isDemo && settings.onboardingCompleted && environment.startupError == nil {
-                DemoBanner { environment.setDemoMode(false) }
-                    .frame(maxWidth: .infinity)
-                    .padding(.bottom, 6)
-            }
-        }
         .overlay { ToastOverlay(center: toasts) }
         .overlay {
             if settings.privacyShield && scenePhase != .active && !lock.isLocked {

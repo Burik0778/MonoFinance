@@ -4,43 +4,50 @@ import MonoCore
 struct MainTabView: View {
     @Environment(Router.self) private var router
     @Environment(AppEnvironment.self) private var environment
+    @Environment(FinanceStore.self) private var store
     @Namespace private var zoomNamespace
 
     var body: some View {
         @Bindable var router = router
         TabView(selection: $router.tab) {
             NavigationStack(path: $router.overviewPath) {
-                OverviewView().withRoutes()
+                OverviewView().dockClearance().withRoutes()
             }
             .toolbar(.hidden, for: .tabBar)
             .tag(AppTab.overview)
 
             NavigationStack(path: $router.transactionsPath) {
-                TransactionsView().withRoutes()
+                TransactionsView().dockClearance().withRoutes()
             }
             .toolbar(.hidden, for: .tabBar)
             .tag(AppTab.transactions)
 
             NavigationStack(path: $router.analyticsPath) {
-                AnalyticsView().withRoutes()
+                AnalyticsView().dockClearance().withRoutes()
             }
             .toolbar(.hidden, for: .tabBar)
             .tag(AppTab.analytics)
 
             NavigationStack(path: $router.plansPath) {
-                PlansView().withRoutes()
+                PlansView().dockClearance().withRoutes()
             }
             .toolbar(.hidden, for: .tabBar)
             .tag(AppTab.plans)
         }
         .environment(\.zoomNamespace, zoomNamespace)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            FloatingDock(
-                selection: $router.tab,
-                onVoice: { router.present(.voice(prefill: nil)) },
-                onManualEntry: { router.newTransaction(.expense) },
-                onTransfer: { router.newTransaction(.transfer) }
-            )
+            VStack(spacing: 8) {
+                if store.isDemo {
+                    DemoBanner { environment.setDemoMode(false) }
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                FloatingDock(
+                    selection: $router.tab,
+                    onVoice: { router.present(.voice(prefill: nil)) },
+                    onManualEntry: { router.newTransaction(.expense) },
+                    onTransfer: { router.newTransaction(.transfer) }
+                )
+            }
             .padding(.bottom, 4)
         }
         .onAppear {
@@ -57,6 +64,25 @@ extension View {
     func withRoutes() -> some View {
         navigationDestination(for: Route.self) { route in
             RouteDestination(route: route)
+                .dockClearance()
+        }
+    }
+
+    /// Отступ снизу под плавающий док: содержимое прокручивается до конца и не прячется под ним.
+    func dockClearance() -> some View {
+        modifier(DockClearance())
+    }
+}
+
+/// Док живёт поверх TabView, а его safe area не доходит до вкладок, поэтому отступ задаётся на каждом экране.
+struct DockClearance: ViewModifier {
+    @Environment(FinanceStore.self) private var store
+
+    func body(content: Content) -> some View {
+        content.safeAreaInset(edge: .bottom, spacing: 0) {
+            Color.clear
+                .frame(height: store.isDemo ? 128 : 88)
+                .allowsHitTesting(false)
         }
     }
 }

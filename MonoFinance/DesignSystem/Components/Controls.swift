@@ -220,8 +220,8 @@ struct FormRow<Trailing: View>: View {
             }
             .multilineTextAlignment(.leading)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .layoutPriority(1)
             trailing
+                .layoutPriority(1)
         }
         .padding(.vertical, 6)
         .contentShape(Rectangle())
