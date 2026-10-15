@@ -11,8 +11,41 @@ enum PDFTextExtractor {
     static func pages(from data: Data) throws -> [PDFPageText] {
         guard let document = PDFDocument(data: data) else { throw ImportError.corruptPDF }
         guard !document.isLocked else { throw ImportError.lockedPDF }
-        return (0..<document.pageCount).compactMap { index in
-            document.page(at: index).map { PDFPageText(words: words(on: $0)) }
+        let count = document.pageCount
+        guard count > 1 else { return document.page(at: 0).map { [PDFPageText(words: words(on: $0))] } ?? [] }
+        // Буквы по одной — небыстро (~0,5 с на страницу), поэтому страницы читаются параллельно.
+        // У каждого потока свой экземпляр документа: PDFKit не обещает потокобезопасность одного PDFDocument.
+        let workers = max(1, min(count, ProcessInfo.processInfo.activeProcessorCount))
+        let results = PageResults(count: count)
+        DispatchQueue.concurrentPerform(iterations: workers) { worker in
+            guard let copy = PDFDocument(data: data) else { return }
+            for index in stride(from: worker, to: count, by: workers) {
+                if let page = copy.page(at: index) { results.set(index, PDFPageText(words: words(on: page))) }
+            }
+        }
+        // Если копия документа не открылась, недостающие страницы читаем по порядку.
+        return (0..<count).map { index in
+            results.page(index) ?? document.page(at: index).map { PDFPageText(words: words(on: $0)) } ?? PDFPageText(words: [])
+        }
+    }
+
+    /// Результаты по страницам из нескольких потоков.
+    private final class PageResults: @unchecked Sendable {
+        private let lock = NSLock()
+        private var pages: [PDFPageText?]
+
+        init(count: Int) { pages = Array(repeating: nil, count: count) }
+
+        func set(_ index: Int, _ page: PDFPageText) {
+            lock.lock()
+            pages[index] = page
+            lock.unlock()
+        }
+
+        func page(_ index: Int) -> PDFPageText? {
+            lock.lock()
+            defer { lock.unlock() }
+            return pages[index]
         }
     }
 
