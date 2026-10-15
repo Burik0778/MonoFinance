@@ -19,7 +19,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Select Xcode
         run: |
           XCODE=$(ls -d /Applications/Xcode_*.app | grep -iv beta | sort -V | tail -1)
@@ -34,7 +34,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Select Xcode
         run: |
           ls -d /Applications/Xcode*.app
@@ -56,6 +56,22 @@ jobs:
       - name: Error summary
         if: failure()
         run: grep -E 'error:' build.log | sort -u | head -200 || true
+      - name: Publish build log to ci-logs branch
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p /tmp/ci
+          sed "s|$GITHUB_WORKSPACE/||g" build.log > /tmp/ci/build.log || true
+          grep -E ' error: | warning: ' /tmp/ci/build.log | sort -u > /tmp/ci/errors.txt || true
+          echo "${GITHUB_SHA}" > /tmp/ci/commit.txt
+          cd /tmp/ci
+          git init -q -b ci-logs
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -qm "CI log ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-logs
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
