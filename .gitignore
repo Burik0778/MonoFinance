@@ -1,0 +1,15 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.ipa
+Payload/
+
+# SwiftPM
+.build/
+Packages/MonoKit/.build/
+.swiftpm/
+
+# macOS
+.DS_Store

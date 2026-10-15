@@ -1,0 +1,69 @@
+# Генерация Xcode-проекта: `xcodegen generate` (готовый MonoFinance.xcodeproj уже лежит в репозитории).
+name: MonoFinance
+options:
+  bundleIdPrefix: uz.mono
+  deploymentTarget:
+    iOS: "18.0"
+  developmentLanguage: ru
+  createIntermediateGroups: true
+  groupSortPosition: top
+  xcodeVersion: "16.0"
+settings:
+  base:
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+packages:
+  MonoKit:
+    path: Packages/MonoKit
+targets:
+  MonoFinance:
+    type: application
+    platform: iOS
+    sources:
+      - path: MonoFinance
+    dependencies:
+      - package: MonoKit
+        product: MonoKit
+    settings:
+      base:
+        PRODUCT_NAME: MonoFinance
+        PRODUCT_BUNDLE_IDENTIFIER: uz.mono.finance
+        INFOPLIST_FILE: Config/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+        ENABLE_PREVIEWS: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+        LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+        STRING_CATALOG_GENERATE_SYMBOLS: NO
+        SWIFT_STRICT_CONCURRENCY: minimal
+        ENABLE_USER_SCRIPT_SANDBOXING: YES
+        DEAD_CODE_STRIPPING: YES
+schemes:
+  MonoFinance:
+    build:
+      targets:
+        MonoFinance: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: false
+      targets:
+        - package: MonoKit/MonoCoreTests
+        - package: MonoKit/MonoStorageTests
+        - package: MonoKit/MonoAnalyticsTests
+        - package: MonoKit/MonoIntelligenceTests
+        - package: MonoKit/MonoImportTests
+        - package: MonoKit/MonoBankSyncTests
+    profile:
+      config: Release
+    archive:
+      config: Release
