@@ -146,7 +146,7 @@ struct GoalDetailView: View {
             .padding(.bottom, 32)
         }
         .scrollIndicators(.hidden)
-        .background(MonoBackdrop(haze: true))
+        .background(MonoBackdrop())
         .navigationTitle(Text(verbatim: goal.name))
         .navigationBarTitleDisplayMode(.inline)
     }

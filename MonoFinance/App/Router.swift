@@ -2,33 +2,6 @@ import SwiftUI
 import Observation
 import MonoCore
 
-enum AppTab: String, Hashable, CaseIterable, Identifiable {
-    case overview
-    case transactions
-    case analytics
-    case plans
-
-    var id: String { rawValue }
-
-    var title: LocalizedStringKey {
-        switch self {
-        case .overview: return "Обзор"
-        case .transactions: return "Операции"
-        case .analytics: return "Аналитика"
-        case .plans: return "Планы"
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .overview: return "house.fill"
-        case .transactions: return "list.bullet.rectangle.portrait.fill"
-        case .analytics: return "chart.bar.fill"
-        case .plans: return "target"
-        }
-    }
-}
-
 /// Контекст редактора операции.
 struct TransactionEditorContext: Hashable {
     var existingID: UUID?
@@ -75,6 +48,12 @@ enum AppSheet: Identifiable {
 
 /// Экраны в стеке навигации.
 enum Route: Hashable {
+    /// Статистика (бывшая вкладка «Аналитика»).
+    case analytics
+    /// Бюджеты, цели, запланированные траты.
+    case plans
+    /// Вся история операций с поиском и фильтрами.
+    case history
     case accounts
     case account(UUID)
     case transaction(UUID)
@@ -93,15 +72,12 @@ enum Route: Hashable {
     case settings
 }
 
+/// Навигация: один стек от главного экрана и модальные листы. Вкладок нет — всё второстепенное открывается с главной.
 @MainActor
 @Observable
 final class Router {
-    var tab: AppTab = .overview
     var sheet: AppSheet?
-    var overviewPath = NavigationPath()
-    var transactionsPath = NavigationPath()
-    var analyticsPath = NavigationPath()
-    var plansPath = NavigationPath()
+    var path = NavigationPath()
 
     func present(_ sheet: AppSheet) {
         if self.sheet != nil {
@@ -117,12 +93,11 @@ final class Router {
     }
 
     func open(_ route: Route) {
-        switch tab {
-        case .overview: overviewPath.append(route)
-        case .transactions: transactionsPath.append(route)
-        case .analytics: analyticsPath.append(route)
-        case .plans: plansPath.append(route)
-        }
+        path.append(route)
+    }
+
+    func popToRoot() {
+        path = NavigationPath()
     }
 
     func newTransaction(_ kind: TransactionKind = .expense, accountID: UUID? = nil) {

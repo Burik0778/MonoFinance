@@ -16,7 +16,7 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            MonoBackdrop(haze: true)
+            MonoBackdrop()
             VStack(spacing: 0) {
                 if step > 0 {
                     HStack(spacing: 6) {

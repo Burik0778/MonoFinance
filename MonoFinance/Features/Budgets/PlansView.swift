@@ -19,12 +19,14 @@ struct PlansView: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: 26) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Kicker("Планы")
-                    Text(verbatim: DateFormatting.monthTitle(month, calendar: store.periods.calendar, language: language, includeYear: false))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Планы")
                         .monoFont(.display)
                         .foregroundStyle(Color.mono.textPrimary)
                         .accessibilityAddTraits(.isHeader)
+                    Text(verbatim: DateFormatting.monthTitle(month, calendar: store.periods.calendar, language: language, includeYear: false))
+                        .monoFont(.footnote)
+                        .foregroundStyle(Color.mono.textTertiary)
                 }
 
                 MonthLimitCard(status: overall)
@@ -75,8 +77,8 @@ struct PlansView: View {
         }
         .scrollIndicators(.hidden)
         .defaultScrollAnchor(DebugFlags.scrollAnchor)
-        .background(MonoBackdrop(haze: true))
-        .toolbar(.hidden, for: .navigationBar)
+        .background(MonoBackdrop())
+        .navigationBarTitleDisplayMode(.inline)
     }
 
 }

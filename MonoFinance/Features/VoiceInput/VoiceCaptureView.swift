@@ -19,7 +19,7 @@ struct VoiceCaptureView: View {
 
     var body: some View {
         ZStack {
-            MonoBackdrop(haze: true)
+            MonoBackdrop()
             VStack(spacing: 0) {
                 topBar
                 switch model.phase {

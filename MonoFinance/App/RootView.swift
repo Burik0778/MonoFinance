@@ -135,7 +135,7 @@ struct PrivacyShieldView: View {
     var body: some View {
         ZStack {
             Color.mono.background.ignoresSafeArea()
-            MonoBackdrop(haze: true)
+            MonoBackdrop()
             VStack(spacing: 12) {
                 Text(verbatim: "MONO")
                     .font(.system(size: 44, weight: .bold, design: .default).width(.expanded))
@@ -151,7 +151,7 @@ struct LockScreenView: View {
 
     var body: some View {
         ZStack {
-            MonoBackdrop(haze: true)
+            MonoBackdrop()
             VStack(spacing: 28) {
                 Spacer()
                 Image(systemName: symbol)

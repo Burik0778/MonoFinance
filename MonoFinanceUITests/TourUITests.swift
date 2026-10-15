@@ -45,7 +45,7 @@ final class TourUITests: XCTestCase {
         let field = app.textViews.firstMatch.exists ? app.textViews.firstMatch : app.textFields.firstMatch
         if field.waitForExistence(timeout: 3) {
             field.tap()
-            field.typeText("Вчера купил продукты в Корзинке на 245 тысяч и потратил 40 тысяч на такси")
+            field.typeText("Сегодня купил кроссовки в Адидасе за 845 тысяч и потратил 40 тысяч на такси")
             wait(1)
         }
         tap(button("Разобрать фразу"))
@@ -57,48 +57,59 @@ final class TourUITests: XCTestCase {
         // Если лист голосового ввода всё ещё открыт — закрываем, чтобы продолжить экскурсию.
         if button("Закрыть").exists { tap(button("Закрыть")) }
         wait(1)
+        let voiceSaved = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] 'адидас' OR label CONTAINS[c] 'adidas'")).firstMatch
+        XCTAssertTrue(voiceSaved.waitForExistence(timeout: 3), "Операция из голосовой фразы не появилась в ленте")
 
-        // Операции: список и карточка операции.
-        tap(button("Операции"))
-        wait(2)
-        app.swipeUp(velocity: .slow)
-        wait(1.5)
-        app.swipeDown(velocity: .fast)
-        wait(1)
-        let firstRow = app.cells.element(boundBy: 2)
-        if firstRow.waitForExistence(timeout: 2) {
-            firstRow.tap()
-            wait(2.5)
-            let back = app.navigationBars.buttons.firstMatch
-            if back.exists { back.tap() }
-            wait(1)
+        // Главная: лента операций — открываем первую операцию и возвращаемся.
+        let firstRow = app.buttons.matching(NSPredicate(format: "label CONTAINS 'сум'")).element(boundBy: 1)
+        if tap(firstRow) {
+            wait(2)
+            XCTAssertTrue(app.navigationBars["Операция"].waitForExistence(timeout: 3), "Карточка операции не открылась")
+            back()
         }
 
-        // Аналитика.
-        tap(button("Аналитика"))
-        wait(2.5)
-        for _ in 0..<4 {
+        // Поиск и вся история.
+        XCTAssertTrue(tap(button("Поиск")), "Нет кнопки поиска на главной")
+        wait(2)
+        XCTAssertTrue(app.navigationBars["Операции"].waitForExistence(timeout: 3), "История операций не открылась")
+        app.swipeUp(velocity: .slow)
+        wait(1.2)
+        back()
+
+        // Статистика: главное и подробный разбор.
+        XCTAssertTrue(tap(button("Статистика")), "Нет кнопки статистики на главной")
+        wait(2)
+        XCTAssertTrue(app.staticTexts["Статистика"].waitForExistence(timeout: 3), "Статистика не открылась")
+        app.swipeUp(velocity: .slow)
+        wait(1.5)
+        tap(button("Подробный разбор"))
+        wait(1.5)
+        for _ in 0..<2 {
             app.swipeUp(velocity: .slow)
-            wait(1.8)
+            wait(1.2)
         }
-        for _ in 0..<4 { app.swipeDown(velocity: .fast) }
-        wait(1)
 
-        // Планы.
-        tap(button("Планы"))
-        wait(2.5)
-        app.swipeUp(velocity: .slow)
+        // Планы — из статистики.
+        XCTAssertTrue(tap(button("Бюджеты и цели")), "Нет перехода к планам")
         wait(2)
+        XCTAssertTrue(app.staticTexts["Планы"].waitForExistence(timeout: 3), "Планы не открылись")
         app.swipeUp(velocity: .slow)
         wait(1.5)
-        app.swipeDown(velocity: .fast)
-        app.swipeDown(velocity: .fast)
-        wait(1)
+        back()
+        back()
+
+        // Выбор счёта на главной.
+        XCTAssertTrue(tap(button("Выбрать счёт")), "Нет выбора счёта")
+        wait(1.5)
+        tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Kapital'")).firstMatch)
+        wait(2)
+        tap(button("Выбрать счёт"))
+        wait(1.2)
+        tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Все счета'")).firstMatch)
+        wait(1.5)
 
         // Новый расход с цифровой клавиатуры.
-        tap(button("Обзор"))
-        wait(1.5)
-        tap(button("Расход"))
+        XCTAssertTrue(tap(button("Новая операция")), "Нет строки «Новая операция»")
         wait(1.5)
         for digit in ["1", "5", "0", "0", "0", "0"] {
             tap(button(digit), timeout: 2)
@@ -109,17 +120,24 @@ final class TourUITests: XCTestCase {
         wait(1)
         tap(button("Сохранить"), timeout: 2)
         wait(2.5)
+        let newExpense = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Такси'")).firstMatch
+        XCTAssertTrue(newExpense.waitForExistence(timeout: 3), "Новая операция не появилась в ленте")
 
         // Настройки.
-        tap(button("Настройки"))
+        XCTAssertTrue(tap(button("Настройки")), "Нет кнопки настроек")
         wait(2)
         app.swipeUp(velocity: .slow)
         wait(1.5)
         app.swipeUp(velocity: .slow)
         wait(1.5)
+        back()
+        wait(2)
+    }
+
+    private func back() {
         let back = app.navigationBars.buttons.firstMatch
         if back.exists { back.tap() }
-        wait(2)
+        wait(1.2)
     }
 
     // MARK: - Помощники

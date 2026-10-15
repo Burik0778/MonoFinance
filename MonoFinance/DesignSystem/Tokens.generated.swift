@@ -4,25 +4,25 @@ import SwiftUI
 enum MonoTokens {
     enum Palette {
         /// Фон приложения
-        static let background = DynamicColor(dark: RGBA(9, 13, 20, 1.000), light: RGBA(243, 245, 248, 1.000))
+        static let background = DynamicColor(dark: RGBA(8, 9, 12, 1.000), light: RGBA(244, 245, 247, 1.000))
         /// Фон листов и шторок
-        static let backgroundRaised = DynamicColor(dark: RGBA(13, 18, 27, 1.000), light: RGBA(235, 238, 243, 1.000))
+        static let backgroundRaised = DynamicColor(dark: RGBA(14, 16, 20, 1.000), light: RGBA(236, 237, 240, 1.000))
         /// Поверхность: карточки и списки
-        static let surface1 = DynamicColor(dark: RGBA(18, 25, 37, 1.000), light: RGBA(255, 255, 255, 1.000))
+        static let surface1 = DynamicColor(dark: RGBA(19, 21, 25, 1.000), light: RGBA(255, 255, 255, 1.000))
         /// Вложенные блоки, поля, нажатое состояние
-        static let surface2 = DynamicColor(dark: RGBA(24, 33, 49, 1.000), light: RGBA(246, 247, 250, 1.000))
+        static let surface2 = DynamicColor(dark: RGBA(26, 29, 34, 1.000), light: RGBA(244, 245, 247, 1.000))
         /// Чипы, дорожки прогресса, плитки значков
-        static let surface3 = DynamicColor(dark: RGBA(32, 43, 61, 1.000), light: RGBA(231, 235, 241, 1.000))
+        static let surface3 = DynamicColor(dark: RGBA(35, 39, 46, 1.000), light: RGBA(230, 232, 236, 1.000))
         /// Волосяные разделители
         static let strokeSubtle = DynamicColor(dark: RGBA(255, 255, 255, 0.055), light: RGBA(11, 16, 24, 0.063))
         /// Контуры полей, фокус
         static let strokeStrong = DynamicColor(dark: RGBA(255, 255, 255, 0.110), light: RGBA(11, 16, 24, 0.133))
         /// Основной текст и суммы
-        static let textPrimary = DynamicColor(dark: RGBA(234, 240, 247, 1.000), light: RGBA(11, 16, 24, 1.000))
+        static let textPrimary = DynamicColor(dark: RGBA(238, 240, 243, 1.000), light: RGBA(12, 14, 18, 1.000))
         /// Вторичный текст
-        static let textSecondary = DynamicColor(dark: RGBA(155, 167, 185, 1.000), light: RGBA(74, 84, 101, 1.000))
+        static let textSecondary = DynamicColor(dark: RGBA(160, 165, 174, 1.000), light: RGBA(76, 81, 91, 1.000))
         /// Подписи, плейсхолдеры
-        static let textTertiary = DynamicColor(dark: RGBA(113, 125, 145, 1.000), light: RGBA(104, 114, 133, 1.000))
+        static let textTertiary = DynamicColor(dark: RGBA(111, 116, 126, 1.000), light: RGBA(106, 111, 121, 1.000))
         /// Единственный акцент: основные кнопки, выбор, линия графика
         static let accent = DynamicColor(dark: RGBA(61, 112, 224, 1.000), light: RGBA(46, 98, 214, 1.000))
         /// Акцент для текста и значков на тёмной поверхности
@@ -36,7 +36,7 @@ enum MonoTokens {
         /// Предупреждения, комиссии
         static let warning = DynamicColor(dark: RGBA(217, 165, 90, 1.000), light: RGBA(148, 101, 15, 1.000))
         /// Нейтральная графика: «прочее», прошлый период
-        static let neutral = DynamicColor(dark: RGBA(92, 104, 124, 1.000), light: RGBA(154, 163, 178, 1.000))
+        static let neutral = DynamicColor(dark: RGBA(93, 98, 108, 1.000), light: RGBA(162, 166, 174, 1.000))
     }
 
     enum Chart {

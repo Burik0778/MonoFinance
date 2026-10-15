@@ -44,7 +44,12 @@ final class AppEnvironment {
             self.store = FinanceStore(database: try! LedgerDatabase.inMemory(), isDemo: false)
         }
         #if DEBUG
-        if screenshots { applyScreenshotRoute(arguments) }
+        if screenshots {
+            // Главная по умолчанию — «Все счета»; `-monoScopeAccount` показывает её по первому счёту.
+            let scope = arguments.contains("-monoScopeAccount") ? (store.activeAccounts.first?.id.uuidString ?? "") : ""
+            UserDefaults.standard.set(scope, forKey: "home.accountScope")
+            applyScreenshotRoute(arguments)
+        }
         #endif
     }
 
@@ -55,25 +60,29 @@ final class AppEnvironment {
             guard let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1) else { return nil }
             return arguments[index + 1]
         }
-        if let tab = value(after: "-monoTab").flatMap(AppTab.init(rawValue:)) { router.tab = tab }
+        switch value(after: "-monoTab") {
+        case "transactions": router.path.append(Route.history)
+        case "analytics": router.path.append(Route.analytics)
+        case "plans": router.path.append(Route.plans)
+        default: break
+        }
         switch value(after: "-monoRoute") {
         case "account":
-            if let account = store.activeAccounts.first { router.overviewPath.append(Route.account(account.id)) }
+            if let account = store.activeAccounts.first { router.path.append(Route.account(account.id)) }
         case "settings":
-            router.overviewPath.append(Route.settings)
+            router.path.append(Route.settings)
         case "accounts":
-            router.overviewPath.append(Route.accounts)
+            router.path.append(Route.accounts)
         case "transaction":
             if let transaction = store.transactions.first(where: { $0.kind == .expense && $0.merchant != nil }) {
-                router.tab = .transactions
-                router.transactionsPath.append(Route.transaction(transaction.id))
+                router.path.append(Route.transaction(transaction.id))
             }
         case "categories":
-            router.overviewPath.append(Route.categories)
+            router.path.append(Route.categories)
         case "goal":
             if let goal = store.goals.first {
-                router.tab = .plans
-                router.plansPath.append(Route.goal(goal.id))
+                router.path.append(Route.plans)
+                router.path.append(Route.goal(goal.id))
             }
         default:
             break
@@ -127,10 +136,7 @@ final class AppEnvironment {
         do {
             store = try Self.makeStore(demo: enabled)
             settings.demoMode = enabled
-            router.overviewPath = NavigationPath()
-            router.transactionsPath = NavigationPath()
-            router.analyticsPath = NavigationPath()
-            router.plansPath = NavigationPath()
+            router.popToRoot()
         } catch {
             toasts.show(ToastMessage(text: AppError(error).message, symbol: "exclamationmark.triangle.fill", tint: Color.mono.warning))
         }
@@ -190,6 +196,15 @@ enum AppCommand: Equatable {
 
 /// Флаги для снимков экрана в симуляторе (только в отладочной сборке).
 enum DebugFlags {
+    /// `-monoScopeSheet` — главная открывается с листом выбора счёта.
+    static let showsScopeSheet: Bool = {
+        #if DEBUG
+        return ProcessInfo.processInfo.arguments.contains("-monoScopeSheet")
+        #else
+        return false
+        #endif
+    }()
+
     /// `-monoVoiceIdle` — голосовой экран открывается без автозапуска записи (в симуляторе нет микрофона).
     static let voiceIdle: Bool = {
         #if DEBUG

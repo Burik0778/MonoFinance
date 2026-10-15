@@ -473,7 +473,7 @@ struct AboutView: View {
             .padding(20)
         }
         .scrollIndicators(.hidden)
-        .background(MonoBackdrop(haze: true))
+        .background(MonoBackdrop())
         .navigationTitle(Text("О приложении"))
         .navigationBarTitleDisplayMode(.inline)
     }

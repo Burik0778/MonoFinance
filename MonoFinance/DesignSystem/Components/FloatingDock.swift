@@ -1,95 +1,67 @@
 import SwiftUI
 
-/// Плавающий док вместо стандартного таб-бара: четыре раздела и голосовая кнопка в центре — главный способ добавить операцию.
-/// Выбор раздела — акцентный значок и точка под ним; голосовая кнопка — сплошной акцент без свечений.
-/// Долгое нажатие на микрофон открывает ручной ввод и перевод.
-struct FloatingDock: View {
-    @Binding var selection: AppTab
+/// Строка ввода внизу главного экрана — единственный постоянный элемент управления.
+/// Слева — ручной ввод, справа — микрофон. Долгое нажатие открывает доход, перевод и импорт.
+struct CommandBar: View {
     let onVoice: () -> Void
-    let onManualEntry: () -> Void
+    let onManual: () -> Void
+    let onIncome: () -> Void
     let onTransfer: () -> Void
+    let onImport: () -> Void
 
-    @Namespace private var namespace
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HStack(spacing: 0) {
-            tab(.overview)
-            tab(.transactions)
-            voiceButton
-            tab(.analytics)
-            tab(.plans)
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 6)
-        .background {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).fill(Color.mono.surface1.opacity(colorScheme == .dark ? 0.86 : 0.75)))
-        }
-        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Color.mono.strokeStrong, lineWidth: 1))
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0.5 : 0.12), radius: 20, x: 0, y: 10)
-        .padding(.horizontal, 16)
-    }
-
-    private func tab(_ tab: AppTab) -> some View {
-        let selected = selection == tab
-        return Button {
-            guard !selected else { return }
-            Haptics.selection()
-            withMonoAnimation(.quick) { selection = tab }
-        } label: {
-            VStack(spacing: 5) {
-                Image(systemName: tab.symbol)
-                    .font(.system(size: 18, weight: selected ? .semibold : .regular))
-                    .symbolEffect(.bounce, value: selected)
-                    .frame(height: 22)
-                Text(tab.title)
-                    .monoFont(.caption)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                ZStack {
-                    if selected {
-                        Capsule()
-                            .fill(Color.mono.accent)
-                            .matchedGeometryEffect(id: "dock-selection", in: namespace)
-                    }
+            Button {
+                Haptics.tap()
+                onManual()
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .semibold))
+                    Text("Новая операция")
+                        .monoFont(.headline)
+                    Spacer(minLength: 0)
                 }
-                .frame(width: 16, height: 3)
+                .foregroundStyle(Color.mono.textPrimary)
+                .padding(.leading, 22)
+                .frame(height: 60)
+                .contentShape(Rectangle())
             }
-            .foregroundStyle(selected ? Color.mono.textPrimary : Color.mono.textTertiary)
-            .frame(maxWidth: .infinity)
-            .padding(.top, 8)
-            .padding(.bottom, 4)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(tab.title))
-        .accessibilityAddTraits(selected ? .isSelected : [])
-    }
+            .buttonStyle(PressableStyle(scale: 0.98))
+            .contextMenu {
+                Button(action: onManual) { Label("Расход", systemImage: "arrow.up.right") }
+                Button(action: onIncome) { Label("Доход", systemImage: "arrow.down.left") }
+                Button(action: onTransfer) { Label("Перевод между счетами", systemImage: "arrow.left.arrow.right") }
+                Button(action: onImport) { Label("Импорт выписки", systemImage: "tray.and.arrow.down") }
+            }
+            .accessibilityLabel(Text("Новая операция"))
+            .accessibilityHint(Text("Удерживайте, чтобы выбрать доход, перевод или импорт"))
 
-    private var voiceButton: some View {
-        Button(action: onVoice) {
-            ZStack {
-                Circle()
-                    .fill(Color.mono.accent)
-                    .frame(width: 54, height: 54)
-                    .overlay(Circle().strokeBorder(.white.opacity(0.16), lineWidth: 1))
-                    .shadow(color: .black.opacity(0.35), radius: 8, x: 0, y: 4)
+            Button {
+                Haptics.rigid()
+                onVoice()
+            } label: {
                 Image(systemName: "mic.fill")
-                    .font(.system(size: 21, weight: .semibold))
+                    .font(.system(size: 19, weight: .semibold))
                     .foregroundStyle(Color.mono.onAccent)
+                    .frame(width: 50, height: 50)
+                    .background(Circle().fill(Color.mono.accent))
+                    .overlay(Circle().strokeBorder(.white.opacity(0.14), lineWidth: 1))
+                    .contentShape(Circle())
             }
-            .frame(width: 66, height: 58)
-            .contentShape(Circle())
+            .buttonStyle(PressableStyle(scale: 0.9))
+            .padding(.trailing, 5)
+            .accessibilityLabel(Text("Голосовой ввод операции"))
         }
-        .buttonStyle(PressableStyle(scale: 0.9))
-        .contextMenu {
-            Button(action: onVoice) { Label("Голосовой ввод", systemImage: "mic.fill") }
-            Button(action: onManualEntry) { Label("Ввести вручную", systemImage: "square.and.pencil") }
-            Button(action: onTransfer) { Label("Перевод между счетами", systemImage: "arrow.left.arrow.right") }
+        .background {
+            Capsule(style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(Capsule(style: .continuous).fill(Color.mono.surface1.opacity(colorScheme == .dark ? 0.9 : 0.8)))
         }
-        .accessibilityLabel(Text("Голосовой ввод операции"))
-        .accessibilityHint(Text("Удерживайте для ручного ввода"))
+        .overlay(Capsule(style: .continuous).strokeBorder(Color.mono.strokeStrong, lineWidth: 1))
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.55 : 0.12), radius: 24, x: 0, y: 12)
+        .padding(.horizontal, 20)
     }
 }

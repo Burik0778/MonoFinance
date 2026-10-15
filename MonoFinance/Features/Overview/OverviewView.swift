@@ -1,27 +1,41 @@
 import SwiftUI
-import Charts
 import MonoCore
 import MonoAnalytics
-import MonoIntelligence
 
-/// Главный экран. Иерархия: сколько у меня денег → как это меняется → что с месяцем → где лежат деньги → что произошло.
-/// Карточек немного: герой и график лежат прямо на фоне, поверхности — только у модулей со строками.
+/// Главный экран — и единственный «корневой». Отвечает на два вопроса: сколько у меня денег и что я потратил.
+/// Сверху выбор счёта, крупный баланс и одна строка месяца; дальше — лента операций по дням.
+/// Статистика, планы, поиск и настройки открываются отсюда, но не занимают место на экране.
 struct OverviewView: View {
+    @Environment(AppEnvironment.self) private var environment
     @Environment(FinanceStore.self) private var store
     @Environment(Router.self) private var router
-    @Environment(\.appLanguage) private var language
-    @State private var period: PeriodPreset = .last30Days
+    @AppStorage("home.accountScope") private var scopeID = ""
+    @State private var showsScope = DebugFlags.showsScopeSheet
+
+    /// Выбранный счёт или `nil` — все счета.
+    private var scopeAccount: Account? {
+        guard let id = UUID(uuidString: scopeID), let account = store.accountMap[id], !account.isArchived else { return nil }
+        return account
+    }
 
     var body: some View {
         let now = Date()
-        let analytics = store.analytics()
-        let monthRange = store.periods.range(for: .thisMonth, now: now)
-        let month = analytics.summary(monthRange)
+        let account = scopeAccount
+        let scoped = account.map { store.transactions(for: $0) } ?? store.transactions
+        let analytics = account == nil
+            ? store.analytics()
+            : AnalyticsEngine(transactions: scoped, accounts: store.accounts, categories: store.categories, converter: store.converter, periods: store.periods)
+        let month = analytics.summary(store.periods.range(for: .thisMonth, now: now))
         let total = analytics.totalBalance()
 
         ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
-                OverviewHeader(now: now)
+            VStack(alignment: .leading, spacing: 0) {
+                HomeTopBar(account: account, onScope: { showsScope = true })
+                if store.isDemo {
+                    DemoBanner { environment.setDemoMode(false) }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 14)
+                }
                 if store.activeAccounts.isEmpty {
                     EmptyStateView(symbol: "creditcard", title: "Добавьте первый счёт",
                                    message: "Карта, вклад или наличные. Укажите реальный остаток — дальше MONO посчитает всё сам.") {
@@ -29,22 +43,23 @@ struct OverviewView: View {
                             .buttonStyle(PrimaryButtonStyle())
                             .frame(maxWidth: 260)
                     }
-                    .monoSurface(radius: MonoTokens.Radius.xl, padding: 8)
+                    .padding(.top, 60)
                 } else {
-                    BalanceHero(total: total.total, excluded: total.excluded, analytics: analytics, period: $period, now: now)
+                    HomeHero(account: account,
+                             balance: account.map { store.balance(of: $0) } ?? total.total,
+                             excluded: account == nil ? total.excluded : [],
+                             month: month, now: now)
+                        .padding(.top, 36)
                         .riseIn()
-                    VStack(spacing: 14) {
-                        VoiceCommandBar()
-                        QuickActionsRow()
+                    if account == nil {
+                        MonthLimitLine(now: now)
+                            .padding(.top, 24)
                     }
-                    .riseIn(delay: 0.05)
-                    MonthModule(summary: month, categories: analytics.spendingByCategory(monthRange),
-                                mtd: analytics.monthToDate(now: now), now: now)
-                        .riseIn(delay: 0.1)
                     DueRecurringSection(now: now)
-                    AccountsSection()
-                    InsightsSection(insights: InsightEngine(analytics: analytics, budgets: store.budgets, recurring: store.recurring, language: language, now: now).insights())
-                    RecentTransactionsSection()
+                        .padding(.top, 20)
+                    HomeFeed(transactions: scoped.filter { !$0.isOpeningBalance }, account: account, now: now)
+                        .padding(.top, 20)
+                        .riseIn(delay: 0.06)
                 }
             }
             .padding(.horizontal, 20)
@@ -53,430 +68,417 @@ struct OverviewView: View {
         }
         .scrollIndicators(.hidden)
         .defaultScrollAnchor(DebugFlags.scrollAnchor)
-        .background(MonoBackdrop(haze: true))
+        .background(MonoBackdrop())
         .toolbar(.hidden, for: .navigationBar)
         .refreshable { store.reload() }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if !store.activeAccounts.isEmpty {
+                CommandBar(
+                    onVoice: { router.present(.voice(prefill: nil)) },
+                    onManual: { router.newTransaction(.expense, accountID: account?.id) },
+                    onIncome: { router.newTransaction(.income, accountID: account?.id) },
+                    onTransfer: { router.newTransaction(.transfer, accountID: account?.id) },
+                    onImport: { router.present(.importStatement(account)) }
+                )
+                .padding(.bottom, 6)
+            }
+        }
+        .sheet(isPresented: $showsScope) {
+            AccountScopeSheet(selection: $scopeID)
+                .presentationDetents([.medium, .large])
+                .presentationBackground(Color.mono.backgroundRaised)
+                .presentationCornerRadius(MonoTokens.Radius.xxl)
+        }
     }
 }
 
-private struct OverviewHeader: View {
-    let now: Date
-    @Environment(Router.self) private var router
+// MARK: - Шапка
+
+/// Слева — выбор счёта, справа — поиск, статистика и настройки в одной капсуле.
+private struct HomeTopBar: View {
+    let account: Account?
+    let onScope: () -> Void
+
     @Environment(FinanceStore.self) private var store
-    @Environment(\.appLanguage) private var language
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(verbatim: DateFormatting.weekdayDay(now, calendar: store.periods.calendar, language: language))
-                    .textCase(.uppercase)
-                    .monoFont(.kicker)
-                    .foregroundStyle(Color.mono.textTertiary)
-                Text(verbatim: "MONO")
-                    .font(.system(size: 21, weight: .heavy).width(.expanded))
-                    .tracking(1)
-                    .foregroundStyle(Color.mono.textPrimary)
-                    .accessibilityAddTraits(.isHeader)
-            }
-            Spacer()
-            IconButton(systemName: "sparkles", label: "Спросить MONO", tint: Color.mono.accentText) {
-                router.present(.assistant)
-            }
-            IconButton(systemName: "gearshape", label: "Настройки") {
-                router.open(.settings)
-            }
-        }
-    }
-}
-
-// MARK: - Герой: баланс и его движение
-
-/// Общий баланс и график. Проведите по графику — сумма в герое покажет баланс на выбранный день.
-private struct BalanceHero: View {
-    let total: Money
-    let excluded: Set<Currency>
-    let analytics: AnalyticsEngine
-    @Binding var period: PeriodPreset
-    let now: Date
-
-    @State private var selectedDate: Date?
-    @Environment(SettingsStore.self) private var settings
     @Environment(Router.self) private var router
     @Environment(\.appLanguage) private var language
-    @Environment(\.hideAmounts) private var hideAmounts
 
     var body: some View {
-        let points = analytics.balanceHistory(analytics.periods.range(for: period, now: now))
-        let selected = nearest(to: selectedDate, in: points)
-
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center) {
-                Group {
-                    if let selected {
-                        Text(verbatim: DateFormatting.weekdayDay(selected.date, calendar: analytics.periods.calendar, language: language))
-                    } else {
-                        Text("Всего на счетах")
-                    }
-                }
-                .textCase(.uppercase)
-                .monoFont(.kicker)
-                .foregroundStyle(selected == nil ? Color.mono.textTertiary : Color.mono.accentText)
-                .contentTransition(.opacity)
-                Spacer()
-                Button {
-                    Haptics.soft()
-                    withMonoAnimation(.quick) { settings.hideAmounts.toggle() }
-                } label: {
-                    Image(systemName: settings.hideAmounts ? "eye.slash" : "eye")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color.mono.textTertiary)
-                        .frame(width: 32, height: 32)
-                        .contentTransition(.symbolEffect(.replace))
-                }
-                .buttonStyle(PressableStyle(scale: 0.9))
-                .accessibilityLabel(settings.hideAmounts ? Text("Показать суммы") : Text("Скрыть суммы"))
-            }
-
-            HeroAmount(money: selected?.balance ?? total)
-                .onTapGesture(count: 2) {
-                    Haptics.soft()
-                    withMonoAnimation(.quick) { settings.hideAmounts.toggle() }
-                }
-
-            HStack(spacing: 8) {
-                if let first = points.first, let last = points.last {
-                    let end = selected ?? last
-                    DeltaBadge(delta: end.balance - first.balance, caption: Text(verbatim: periodCaption))
-                }
-                if !excluded.isEmpty {
-                    Button {
-                        router.open(.exchangeRates)
-                    } label: {
-                        Label {
-                            Text(verbatim: excluded.map(\.code).sorted().joined(separator: ", "))
-                        } icon: {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                        }
-                        .monoFont(.caption)
-                        .foregroundStyle(Color.mono.warning)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Capsule().fill(Color.mono.warning.opacity(0.12)))
-                    }
-                    .accessibilityLabel(Text("Нет курса для части валют — не включены в общий баланс"))
-                }
-            }
-
-            chart(points: points, selected: selected)
-                .padding(.top, 8)
-
-            SegmentedPills(options: [.last7Days, .last30Days, .last90Days, .last365Days], selection: $period,
-                           title: { $0.shortTitle(language) }, stretch: true)
-        }
-        .onChange(of: period) { _, _ in selectedDate = nil }
-    }
-
-    @ViewBuilder
-    private func chart(points: [BalancePoint], selected: BalancePoint?) -> some View {
-        if points.count > 1 {
-            let values = points.map(\.balance.chartValue)
-            let low = values.min() ?? 0
-            let high = values.max() ?? 1
-            let pad = max((high - low) * 0.2, max(abs(high) * 0.01, 1))
-            let domain = (low - pad)...(high + pad)
-            let start = values.first ?? 0
-
-            Chart {
-                RuleMark(y: .value("Начало периода", start))
-                    .foregroundStyle(Color.mono.strokeStrong)
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 4]))
-                ForEach(points) { point in
-                    AreaMark(
-                        x: .value("Дата", point.date),
-                        yStart: .value("Основание", domain.lowerBound),
-                        yEnd: .value("Баланс", point.balance.chartValue)
-                    )
-                    .interpolationMethod(.monotone)
-                    .foregroundStyle(
-                        LinearGradient(colors: [Color.mono.accent.opacity(0.26), Color.mono.accent.opacity(0)], startPoint: .top, endPoint: .bottom)
-                    )
-                    LineMark(x: .value("Дата", point.date), y: .value("Баланс", point.balance.chartValue))
-                        .interpolationMethod(.monotone)
-                        .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-                        .foregroundStyle(Color.mono.accentText)
-                }
-                if let selected {
-                    RuleMark(x: .value("Дата", selected.date))
-                        .foregroundStyle(Color.mono.textTertiary.opacity(0.6))
-                        .lineStyle(StrokeStyle(lineWidth: 1))
-                    PointMark(x: .value("Дата", selected.date), y: .value("Баланс", selected.balance.chartValue))
-                        .symbolSize(70)
-                        .foregroundStyle(Color.mono.textPrimary)
-                } else if let last = points.last {
-                    PointMark(x: .value("Дата", last.date), y: .value("Баланс", last.balance.chartValue))
-                        .symbolSize(40)
-                        .foregroundStyle(Color.mono.accentText)
-                }
-            }
-            .chartYScale(domain: domain)
-            .chartYAxis(.hidden)
-            .chartXAxis {
-                AxisMarks(preset: .aligned, values: .automatic(desiredCount: 4)) { _ in
-                    AxisValueLabel(format: .dateTime.day().month(.abbreviated))
-                        .foregroundStyle(Color.mono.textTertiary)
-                }
-            }
-            .chartXSelection(value: $selectedDate)
-            .frame(height: 140)
-            .sensoryFeedback(.selection, trigger: selected?.date)
-            .monoAnimation(.standard, value: period)
-            .accessibilityLabel(Text("График баланса"))
-            .accessibilityHint(Text("Проведите пальцем, чтобы увидеть баланс на выбранный день"))
-        } else {
-            Text("График появится после первых операций")
-                .monoFont(.footnote)
-                .foregroundStyle(Color.mono.textTertiary)
-                .frame(maxWidth: .infinity, minHeight: 80)
-        }
-    }
-
-    private var periodCaption: String {
-        switch period {
-        case .last7Days: return Phrase(ru: "за 7 дней", uz: "7 kunda", en: "in 7 days")(language)
-        case .last30Days: return Phrase(ru: "за 30 дней", uz: "30 kunda", en: "in 30 days")(language)
-        case .last90Days: return Phrase(ru: "за 90 дней", uz: "90 kunda", en: "in 90 days")(language)
-        case .last365Days: return Phrase(ru: "за год", uz: "bir yilda", en: "in a year")(language)
-        default: return ""
-        }
-    }
-
-    private func nearest(to date: Date?, in points: [BalancePoint]) -> BalancePoint? {
-        guard let date else { return nil }
-        return points.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }
-    }
-}
-
-// MARK: - Быстрый ввод
-
-/// Командная строка: самый короткий путь к новой операции — сказать её.
-private struct VoiceCommandBar: View {
-    @Environment(Router.self) private var router
-
-    var body: some View {
-        Button {
-            Haptics.tap()
-            router.present(.voice(prefill: nil))
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "mic.fill")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color.mono.onAccent)
-                    .frame(width: 36, height: 36)
-                    .background(Circle().fill(Color.mono.accent))
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Скажите операцию")
-                        .monoFont(.headline)
-                        .foregroundStyle(Color.mono.textPrimary)
-                    Text("«Потратил 85 тысяч на обед»")
-                        .monoFont(.footnote)
-                        .foregroundStyle(Color.mono.textTertiary)
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 8)
-                Image(systemName: "waveform")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(Color.mono.textTertiary)
-            }
-            .padding(.leading, 8)
-            .padding(.trailing, 16)
-            .padding(.vertical, 8)
-            .background(Capsule(style: .continuous).fill(Color.mono.surface1))
-            .overlay(Capsule(style: .continuous).strokeBorder(Color.mono.strokeStrong, lineWidth: 1))
-            .contentShape(Capsule())
-        }
-        .buttonStyle(PressableStyle(scale: 0.98))
-        .accessibilityLabel(Text("Голосовой ввод операции"))
-    }
-}
-
-/// Быстрые действия: расход, доход, перевод и остальное в меню.
-private struct QuickActionsRow: View {
-    @Environment(Router.self) private var router
-
-    var body: some View {
-        HStack(spacing: 0) {
-            action("Расход", symbol: "arrow.up.right") { router.newTransaction(.expense) }
-            action("Доход", symbol: "arrow.down.left") { router.newTransaction(.income) }
-            action("Перевод", symbol: "arrow.left.arrow.right") { router.newTransaction(.transfer) }
-            Menu {
-                Button { router.present(.importStatement(nil)) } label: { Label("Импорт выписки", systemImage: "tray.and.arrow.down") }
-                Button { router.newTransaction(.refund) } label: { Label("Возврат", systemImage: "arrow.uturn.backward") }
-                Button { router.newTransaction(.fee) } label: { Label("Комиссия", systemImage: "percent") }
-                Button { router.open(.accounts) } label: { Label("Корректировка баланса", systemImage: "slider.horizontal.3") }
+        HStack(spacing: 10) {
+            Button {
+                Haptics.selection()
+                onScope()
             } label: {
-                label("Ещё", symbol: "ellipsis")
+                HStack(spacing: 10) {
+                    if let account {
+                        CardThumbnail(skin: account.skin, width: 30)
+                    } else {
+                        StackedThumbnails(skins: store.activeAccounts.prefix(3).map(\.skin))
+                    }
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(verbatim: account?.displayName ?? Phrase(ru: "Все счета", uz: "Barcha hisoblar", en: "All accounts")(language))
+                            .monoFont(.subhead)
+                            .foregroundStyle(Color.mono.textPrimary)
+                            .lineLimit(1)
+                        Text(verbatim: subtitle)
+                            .monoFont(.caption)
+                            .foregroundStyle(Color.mono.textTertiary)
+                            .lineLimit(1)
+                    }
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Color.mono.textTertiary)
+                }
+                .padding(.leading, 8)
+                .padding(.trailing, 14)
+                .padding(.vertical, 7)
+                .background(Capsule(style: .continuous).fill(Color.mono.surface1))
+                .overlay(Capsule(style: .continuous).strokeBorder(Color.mono.strokeSubtle, lineWidth: 1))
+                .contentShape(Capsule())
             }
-            .frame(maxWidth: .infinity)
-            .accessibilityLabel(Text("Другие действия"))
+            .buttonStyle(PressableStyle(scale: 0.97))
+            .accessibilityLabel(Text("Выбрать счёт"))
+
+            Spacer(minLength: 8)
+
+            HStack(spacing: 0) {
+                toolbarIcon("magnifyingglass", label: "Поиск") { router.open(.history) }
+                toolbarIcon("chart.bar", label: "Статистика") { router.open(.analytics) }
+                toolbarIcon("gearshape", label: "Настройки") { router.open(.settings) }
+            }
+            .padding(.horizontal, 4)
+            .background(Capsule(style: .continuous).fill(Color.mono.surface1))
+            .overlay(Capsule(style: .continuous).strokeBorder(Color.mono.strokeSubtle, lineWidth: 1))
         }
     }
 
-    private func action(_ title: LocalizedStringKey, symbol: String, perform: @escaping () -> Void) -> some View {
+    private var subtitle: String {
+        if let account {
+            var parts = [account.bank.isBank ? account.bank.shortName : account.kind.title(language)]
+            if let masked = account.maskedNumber { parts.append(masked) }
+            return parts.joined(separator: " · ")
+        }
+        let count = store.activeAccounts.count
+        return Phrase(ru: "\(count) \(Self.accountsWord(count))", uz: "\(count) ta hisob", en: "\(count) accounts")(language)
+    }
+
+    private static func accountsWord(_ count: Int) -> String {
+        let mod10 = count % 10
+        let mod100 = count % 100
+        if mod10 == 1 && mod100 != 11 { return "счёт" }
+        if (2...4).contains(mod10) && !(12...14).contains(mod100) { return "счёта" }
+        return "счетов"
+    }
+
+    private func toolbarIcon(_ symbol: String, label: LocalizedStringKey, action: @escaping () -> Void) -> some View {
         Button {
-            Haptics.tap()
-            perform()
+            Haptics.selection()
+            action()
         } label: {
-            label(title, symbol: symbol)
-        }
-        .buttonStyle(PressableStyle(scale: 0.94))
-        .frame(maxWidth: .infinity)
-    }
-
-    private func label(_ title: LocalizedStringKey, symbol: String) -> some View {
-        VStack(spacing: 7) {
             Image(systemName: symbol)
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(Color.mono.textPrimary)
-                .frame(width: 52, height: 52)
-                .background(Circle().fill(Color.mono.surface1))
-                .overlay(Circle().strokeBorder(Color.mono.strokeSubtle, lineWidth: 1))
-            Text(title)
-                .monoFont(.caption)
-                .foregroundStyle(Color.mono.textSecondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .frame(width: 40, height: 44)
+                .contentShape(Rectangle())
         }
-        .contentShape(Rectangle())
+        .buttonStyle(PressableStyle(scale: 0.88))
+        .accessibilityLabel(Text(label))
     }
 }
 
-// MARK: - Месяц
+/// Миниатюры нескольких карт веером — знак «все счета».
+private struct StackedThumbnails: View {
+    let skins: [CardSkin]
 
-/// Месяц одним модулем: доходы, расходы, итог, темп относительно прошлого месяца и куда уходят деньги.
-private struct MonthModule: View {
-    let summary: PeriodSummary
-    let categories: [CategoryAmount]
-    let mtd: (current: Money, previous: Money, day: Int)
+    var body: some View {
+        ZStack {
+            ForEach(Array(skins.enumerated().reversed()), id: \.offset) { index, skin in
+                CardThumbnail(skin: skin, width: 26)
+                    .offset(x: CGFloat(index) * 3, y: CGFloat(index) * -3)
+            }
+        }
+        .frame(width: 32, height: 24)
+        .accessibilityHidden(true)
+    }
+}
+
+// MARK: - Баланс и месяц
+
+private struct HomeHero: View {
+    let account: Account?
+    let balance: Money
+    let excluded: Set<Currency>
+    let month: PeriodSummary
     let now: Date
 
+    @Environment(SettingsStore.self) private var settings
     @Environment(FinanceStore.self) private var store
     @Environment(Router.self) private var router
     @Environment(\.appLanguage) private var language
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Kicker("Этот месяц")
-                    Text(verbatim: DateFormatting.monthTitle(store.periods.monthKey(now), calendar: store.periods.calendar, language: language, includeYear: false))
-                        .monoFont(.title)
-                        .foregroundStyle(Color.mono.textPrimary)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text(account == nil ? "Всего на счетах" : "Баланс счёта")
+                        .monoFont(.footnote)
+                        .foregroundStyle(Color.mono.textTertiary)
+                    Button {
+                        Haptics.soft()
+                        withMonoAnimation(.quick) { settings.hideAmounts.toggle() }
+                    } label: {
+                        Image(systemName: settings.hideAmounts ? "eye.slash" : "eye")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color.mono.textTertiary)
+                            .frame(width: 28, height: 22)
+                            .contentShape(Rectangle())
+                            .contentTransition(.symbolEffect(.replace))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(settings.hideAmounts ? Text("Показать суммы") : Text("Скрыть суммы"))
                 }
-                Spacer()
-                SectionLink(title: "Аналитика") { withMonoAnimation(.quick) { router.tab = .analytics } }
-            }
-
-            HStack(alignment: .top, spacing: 12) {
-                metric("Доходы", money: summary.income, sign: .always, color: summary.income.isZero ? Color.mono.textPrimary : Color.mono.positive)
-                metric("Расходы", money: summary.outflow, sign: .automatic, color: Color.mono.textPrimary)
-                metric("Итог", money: summary.net, sign: .always, color: summary.net.isNegative ? Color.mono.negative : Color.mono.textPrimary)
-            }
-
-            paceLine
-
-            if categories.isEmpty {
-                Text("Расходов в этом месяце пока нет")
-                    .monoFont(.callout)
-                    .foregroundStyle(Color.mono.textTertiary)
-            } else {
-                VStack(alignment: .leading, spacing: 12) {
-                    LiquidityBar(segments: segments, height: 8)
-                    VStack(spacing: 0) {
-                        ForEach(Array(categories.prefix(3).enumerated()), id: \.element.id) { index, item in
-                            NavigationLink(value: Route.filteredTransactions(TransactionFilter(categoryID: item.categoryID, range: store.periods.range(for: .thisMonth, now: now)))) {
-                                categoryRow(item, color: Color.mono.chart(index))
-                            }
-                            .buttonStyle(.plain)
+                HeroAmount(money: balance)
+                    .onTapGesture(count: 2) {
+                        Haptics.soft()
+                        withMonoAnimation(.quick) { settings.hideAmounts.toggle() }
+                    }
+                if !excluded.isEmpty {
+                    Button { router.open(.exchangeRates) } label: {
+                        Label {
+                            Text("Без курса: \(excluded.map(\.code).sorted().joined(separator: ", ")) — не в итоге")
+                        } icon: {
+                            Image(systemName: "exclamationmark.triangle.fill")
                         }
+                        .monoFont(.caption)
+                        .foregroundStyle(Color.mono.warning)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            HStack(spacing: 22) {
+                figure(symbol: "arrow.down.left", money: month.income, sign: .always,
+                       tint: month.income.isZero ? Color.mono.textSecondary : Color.mono.positive)
+                figure(symbol: "arrow.up.right", money: month.outflow, sign: .never, tint: Color.mono.textPrimary)
+                Spacer(minLength: 0)
+                Text(verbatim: DateFormatting.monthTitle(store.periods.monthKey(now), calendar: store.periods.calendar, language: language, includeYear: false))
+                    .monoFont(.caption)
+                    .foregroundStyle(Color.mono.textTertiary)
+            }
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    private func figure(symbol: String, money: Money, sign: MoneyFormatter.SignDisplay, tint: Color) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: symbol)
+                .font(.system(size: 9, weight: .heavy))
+                .foregroundStyle(tint)
+                .frame(width: 20, height: 20)
+                .background(Circle().fill(tint.opacity(0.14)))
+            MoneyText(money: money, token: .subhead, sign: sign, color: tint, compact: true)
+        }
+    }
+}
+
+/// Лимит месяца одной строкой — только если он задан. Нажатие открывает планы.
+private struct MonthLimitLine: View {
+    let now: Date
+    @Environment(FinanceStore.self) private var store
+    @Environment(Router.self) private var router
+
+    var body: some View {
+        let statuses = store.analytics().budgetStatuses(store.budgets, month: store.periods.monthKey(now), now: now)
+        if let status = statuses.first(where: { $0.budget.isOverall }) {
+            Button {
+                Haptics.selection()
+                router.open(.plans)
+            } label: {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(status.remaining.isNegative ? "Лимит превышен на" : "До лимита месяца")
+                            .monoFont(.footnote)
+                            .foregroundStyle(Color.mono.textSecondary)
+                        MoneyText(money: status.remaining.magnitude, token: .subhead,
+                                  color: status.remaining.isNegative ? Color.mono.negative : Color.mono.textPrimary, compact: true)
+                        Spacer(minLength: 8)
+                        if let daily = status.dailyAllowance, !status.remaining.isNegative {
+                            MoneyText(money: daily, token: .caption, color: Color.mono.textTertiary, compact: true)
+                            Text("в день")
+                                .monoFont(.caption)
+                                .foregroundStyle(Color.mono.textTertiary)
+                        }
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Color.mono.textTertiary)
+                    }
+                    ProgressTrack(progress: status.progress, tint: status.state.tint, height: 4)
+                }
+                .padding(14)
+                .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.surface1))
+                .overlay(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).strokeBorder(Color.mono.strokeSubtle, lineWidth: 1))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressableStyle(scale: 0.98))
+        }
+    }
+}
+
+// MARK: - Лента
+
+/// Последние операции по дням: название дня и итог трат дня, строки без карточек — на фоне, через волосяные линии.
+private struct HomeFeed: View {
+    let transactions: [FinanceTransaction]
+    let account: Account?
+    let now: Date
+
+    @Environment(FinanceStore.self) private var store
+    @Environment(Router.self) private var router
+    @Environment(ToastCenter.self) private var toasts
+    @Environment(\.appLanguage) private var language
+
+    private static let limit = 60
+
+    var body: some View {
+        let shown = Array(transactions.prefix(Self.limit))
+        let groups = group(shown)
+        VStack(alignment: .leading, spacing: 0) {
+            if shown.isEmpty {
+                VStack(spacing: 10) {
+                    Image(systemName: "waveform")
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundStyle(Color.mono.accentText)
+                        .frame(width: 52, height: 52)
+                        .background(Circle().fill(Color.mono.surface1))
+                    Text("Операций пока нет")
+                        .monoFont(.headline)
+                        .foregroundStyle(Color.mono.textPrimary)
+                    Text("Нажмите на микрофон и скажите, например: «Потратил 85 тысяч на обед».")
+                        .monoFont(.callout)
+                        .foregroundStyle(Color.mono.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 48)
+            }
+            ForEach(groups, id: \.day) { group in
+                HStack(alignment: .firstTextBaseline) {
+                    Text(verbatim: DateFormatting.dayTitle(group.day, now: now, calendar: store.periods.calendar, language: language))
+                        .monoFont(.subhead)
+                        .foregroundStyle(Color.mono.textSecondary)
+                    Spacer()
+                    if group.spending.minorUnits > 0 {
+                        MoneyText(money: group.spending.negated, token: .caption, color: Color.mono.textTertiary)
+                    }
+                }
+                .padding(.top, 22)
+                .padding(.bottom, 2)
+                ForEach(group.items) { transaction in
+                    NavigationLink(value: Route.transaction(transaction.id)) {
+                        TransactionRow(
+                            transaction: transaction,
+                            category: transaction.categoryID.flatMap { store.categoryMap[$0] },
+                            account: store.accountMap[transaction.accountID],
+                            counterAccount: transaction.counterAccountID.flatMap { store.accountMap[$0] },
+                            calendar: store.periods.calendar
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu { menu(for: transaction) }
+                    if transaction.id != group.items.last?.id {
+                        Hairline(inset: 52)
                     }
                 }
             }
-        }
-        .monoSurface(radius: MonoTokens.Radius.xl, padding: 18)
-    }
-
-    private static let uncategorizedID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
-    private static let otherID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
-
-    private var segments: [LiquidityBar.Segment] {
-        let top = Array(categories.prefix(5))
-        var result = top.enumerated().map { index, item in
-            LiquidityBar.Segment(id: item.categoryID ?? Self.uncategorizedID, color: Color.mono.chart(index), value: item.share)
-        }
-        let rest = categories.dropFirst(5).reduce(0.0) { $0 + $1.share }
-        if rest > 0 { result.append(LiquidityBar.Segment(id: Self.otherID, color: Color.mono.neutral, value: rest)) }
-        return result
-    }
-
-    private func metric(_ title: LocalizedStringKey, money: Money, sign: MoneyFormatter.SignDisplay, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .monoFont(.caption)
-                .foregroundStyle(Color.mono.textTertiary)
-            MoneyText(money: money, token: .headline, sign: sign, color: color, compact: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var paceLine: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            if mtd.previous.minorUnits > 0 {
-                let ratio = Double(mtd.current.minorUnits - mtd.previous.minorUnits) / Double(mtd.previous.minorUnits)
-                Image(systemName: ratio <= 0 ? "arrow.down.right" : "arrow.up.right")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(ratio <= 0 ? Color.mono.positive : Color.mono.negative)
-                Text(verbatim: comparisonText(ratio))
-                    .monoFont(.footnote)
+            if transactions.count > Self.limit || !shown.isEmpty {
+                Button {
+                    Haptics.selection()
+                    router.open(account.map { Route.filteredTransactions(TransactionFilter(accountID: $0.id)) } ?? Route.history)
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("Вся история")
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .monoFont(.subhead)
                     .foregroundStyle(Color.mono.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            } else {
-                Text("Сравнение появится, когда накопится история за прошлый месяц")
-                    .monoFont(.footnote)
-                    .foregroundStyle(Color.mono.textTertiary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 18)
             }
-            Spacer(minLength: 0)
         }
     }
 
-    private func categoryRow(_ item: CategoryAmount, color: Color) -> some View {
-        HStack(spacing: 10) {
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(color)
-                .frame(width: 8, height: 8)
-            Text(verbatim: item.categoryID.flatMap { store.categoryMap[$0]?.name } ?? String(localized: "Без категории"))
-                .monoFont(.callout)
-                .foregroundStyle(Color.mono.textPrimary)
-                .lineLimit(1)
-            Text(verbatim: PercentFormatting.string(item.share, language: language))
-                .monoFont(.caption, digits: true)
-                .foregroundStyle(Color.mono.textTertiary)
-            Spacer(minLength: 8)
-            MoneyText(money: item.amount, token: .subhead)
+    @ViewBuilder
+    private func menu(for transaction: FinanceTransaction) -> some View {
+        if !transaction.isOpeningBalance {
+            Button { router.present(.transaction(TransactionEditorContext(existingID: transaction.id, kind: transaction.kind))) } label: {
+                Label("Изменить", systemImage: "pencil")
+            }
+            Button {
+                var copy = transaction
+                copy.id = UUID()
+                copy.date = Date()
+                copy.importFingerprint = nil
+                copy.isOpeningBalance = false
+                copy.source = .manual
+                router.present(.transaction(TransactionEditorContext(kind: transaction.kind, prefill: copy)))
+            } label: {
+                Label("Повторить", systemImage: "arrow.triangle.2.circlepath")
+            }
         }
-        .padding(.vertical, 7)
-        .contentShape(Rectangle())
+        Button(role: .destructive) { delete(transaction) } label: {
+            Label("Удалить", systemImage: "trash")
+        }
     }
 
-    private func comparisonText(_ ratio: Double) -> String {
-        let percent = Int((abs(ratio) * 100).rounded())
-        if ratio <= 0 {
-            return Phrase(ru: "На \(percent)% меньше трат, чем к \(mtd.day)-му числу прошлого месяца",
-                          uz: "O‘tgan oyning \(mtd.day)-kuniga nisbatan \(percent)% kam",
-                          en: "\(percent)% less than by day \(mtd.day) last month")(language)
+    private func delete(_ transaction: FinanceTransaction) {
+        let fees = store.linkedFees(of: transaction)
+        do {
+            try store.delete(transaction)
+            Haptics.warning()
+            toasts.show(ToastMessage(text: String(localized: "Операция удалена"), symbol: "trash.fill", tint: Color.mono.negative,
+                                     actionTitle: String(localized: "Вернуть")) {
+                try? store.restore([transaction] + fees)
+            })
+        } catch {
+            toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.negative))
         }
-        return Phrase(ru: "На \(percent)% больше трат, чем к \(mtd.day)-му числу прошлого месяца",
-                      uz: "O‘tgan oyning \(mtd.day)-kuniga nisbatan \(percent)% ko‘p",
-                      en: "\(percent)% more than by day \(mtd.day) last month")(language)
+    }
+
+    private struct DayGroup {
+        let day: Date
+        let items: [FinanceTransaction]
+        let spending: Money
+    }
+
+    /// Итог дня — как в аналитике: расходы и комиссии минус возвраты; переводы не учитываются.
+    private func group(_ transactions: [FinanceTransaction]) -> [DayGroup] {
+        let calendar = store.periods.calendar
+        let converter = store.converter
+        var order: [Date] = []
+        var buckets: [Date: [FinanceTransaction]] = [:]
+        for transaction in transactions {
+            let day = calendar.startOfDay(for: transaction.date)
+            if buckets[day] == nil { order.append(day) }
+            buckets[day, default: []].append(transaction)
+        }
+        return order.map { day in
+            let items = buckets[day] ?? []
+            var spending = Money.zero(store.baseCurrency)
+            for item in items {
+                guard let base = converter.toBase(item.amount.magnitude) else { continue }
+                switch item.kind {
+                case .expense, .fee: spending += base
+                case .refund: spending -= base
+                default: break
+                }
+            }
+            return DayGroup(day: day, items: items, spending: spending)
+        }
     }
 }

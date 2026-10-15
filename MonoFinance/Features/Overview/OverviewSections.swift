@@ -47,34 +47,6 @@ struct ZoomDestination: ViewModifier {
     }
 }
 
-/// Заголовок модуля на главных экранах: крупное название и ссылка справа.
-struct ModuleHeader<Trailing: View>: View {
-    let title: LocalizedStringKey
-    let trailing: Trailing
-
-    init(_ title: LocalizedStringKey, @ViewBuilder trailing: () -> Trailing) {
-        self.title = title
-        self.trailing = trailing()
-    }
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(title)
-                .monoFont(.title)
-                .foregroundStyle(Color.mono.textPrimary)
-                .accessibilityAddTraits(.isHeader)
-            Spacer(minLength: 12)
-            trailing
-        }
-    }
-}
-
-extension ModuleHeader where Trailing == EmptyView {
-    init(_ title: LocalizedStringKey) {
-        self.init(title) { EmptyView() }
-    }
-}
-
 // MARK: - Регулярные платежи к подтверждению
 
 struct DueRecurringSection: View {
@@ -124,105 +96,108 @@ struct DueRecurringSection: View {
     }
 }
 
-// MARK: - Счета
+// MARK: - Выбор счёта
 
-/// Счета списком: миниатюра карты, название, банк и последние цифры, остаток и доля в общем балансе.
-/// Список вместо карусели — все остатки видны сразу, без прокрутки вбок.
-struct AccountsSection: View {
+/// Лист выбора счёта на главной: «Все счета» или один счёт. Отсюда же — управление картами и новый счёт.
+struct AccountScopeSheet: View {
+    @Binding var selection: String
+
     @Environment(FinanceStore.self) private var store
     @Environment(Router.self) private var router
-    @Environment(\.zoomNamespace) private var zoomNamespace
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.appLanguage) private var language
 
     var body: some View {
-        let accounts = store.activeAccounts
-        let converter = store.converter
-        let baseValues: [UUID: Int64] = Dictionary(uniqueKeysWithValues: accounts.compactMap { account -> (UUID, Int64)? in
-            guard account.includeInTotal, let base = converter.toBase(store.balance(of: account)) else { return nil }
-            return (account.id, max(0, base.minorUnits))
-        })
-        let totalBase = baseValues.values.reduce(0, +)
-
-        VStack(alignment: .leading, spacing: 12) {
-            ModuleHeader("Счета") {
-                SectionLink(title: "Карты") { router.open(.accounts) }
-            }
-            VStack(spacing: 0) {
-                ForEach(accounts) { account in
-                    NavigationLink(value: Route.account(account.id)) {
-                        row(account, share: totalBase > 0 ? baseValues[account.id].map { Double($0) / Double(totalBase) } : nil)
-                    }
-                    .buttonStyle(.plain)
-                    .modifier(ZoomSource(id: account.id, namespace: zoomNamespace))
-                    .contextMenu {
-                        Button { router.newTransaction(.expense, accountID: account.id) } label: { Label("Новая операция", systemImage: "plus") }
-                        Button { router.present(.setBalance(account)) } label: { Label("Корректировка баланса", systemImage: "slider.horizontal.3") }
-                        Button { router.present(.account(account)) } label: { Label("Изменить", systemImage: "pencil") }
-                    }
-                    Hairline(inset: 72)
-                }
-                Button {
-                    Haptics.tap()
-                    router.present(.account(nil))
-                } label: {
-                    HStack(spacing: 14) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(Color.mono.accentText)
-                            .frame(width: 44, height: 28)
-                            .background(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Color.mono.strokeStrong, style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
-                        Text("Добавить счёт")
-                            .monoFont(.callout)
-                            .foregroundStyle(Color.mono.accentText)
-                        Spacer()
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 14)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(PressableStyle(scale: 0.98))
-            }
-            .monoSurface(radius: MonoTokens.Radius.xl, padding: 0)
-        }
-    }
-
-    private func row(_ account: Account, share: Double?) -> some View {
-        HStack(spacing: 14) {
-            CardThumbnail(skin: account.skin, width: 44)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(verbatim: account.displayName)
-                    .monoFont(.body)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("Счета")
+                    .monoFont(.title)
                     .foregroundStyle(Color.mono.textPrimary)
-                    .lineLimit(1)
-                Text(verbatim: subtitle(account))
-                    .monoFont(.footnote)
-                    .foregroundStyle(Color.mono.textTertiary)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 3) {
-                MoneyText(money: store.balance(of: account), token: .amountRow)
-                if let share, store.activeAccounts.count > 1 {
-                    Text(verbatim: PercentFormatting.string(share, language: language))
-                        .monoFont(.caption, digits: true)
-                        .foregroundStyle(Color.mono.textTertiary)
-                } else if account.currency != store.baseCurrency {
-                    Text(verbatim: account.currency.code)
-                        .monoFont(.caption)
-                        .foregroundStyle(Color.mono.textTertiary)
+                    .padding(.top, 24)
+                VStack(spacing: 0) {
+                    row(id: "", thumbnail: AnyView(Image(systemName: "square.stack")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(Color.mono.textSecondary)
+                            .frame(width: 40, height: 26)),
+                        title: Phrase(ru: "Все счета", uz: "Barcha hisoblar", en: "All accounts")(language),
+                        subtitle: nil,
+                        money: store.totalBalance.total)
+                    ForEach(store.activeAccounts) { account in
+                        Hairline(inset: 68)
+                        row(id: account.id.uuidString,
+                            thumbnail: AnyView(CardThumbnail(skin: account.skin, width: 40)),
+                            title: account.displayName,
+                            subtitle: [account.bank.isBank ? account.bank.displayName : account.kind.title(language), account.maskedNumber].compactMap { $0 }.joined(separator: " · "),
+                            money: store.balance(of: account))
+                    }
+                }
+                .monoSurface(radius: MonoTokens.Radius.lg, padding: 0)
+
+                HStack(spacing: 10) {
+                    Button {
+                        close { router.open(.accounts) }
+                    } label: {
+                        Label("Карты", systemImage: "creditcard")
+                    }
+                    .buttonStyle(SecondaryButtonStyle())
+                    Button {
+                        close { router.present(.account(nil)) }
+                    } label: {
+                        Label("Новый счёт", systemImage: "plus")
+                    }
+                    .buttonStyle(SecondaryButtonStyle())
                 }
             }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 24)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .contentShape(Rectangle())
+        .scrollIndicators(.hidden)
     }
 
-    private func subtitle(_ account: Account) -> String {
-        var parts = [account.bank.isBank ? account.bank.shortName : account.kind.title(language)]
-        if let masked = account.maskedNumber { parts.append(masked) }
-        if !account.includeInTotal { parts.append(Phrase(ru: "не в итоге", uz: "jamida emas", en: "not in total")(language)) }
-        return parts.joined(separator: " · ")
+    private func row(id: String, thumbnail: AnyView, title: String, subtitle: String?, money: Money) -> some View {
+        let selected = selection == id
+        return Button {
+            Haptics.selection()
+            selection = id
+            dismiss()
+        } label: {
+            HStack(spacing: 14) {
+                thumbnail
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: title)
+                        .monoFont(.body)
+                        .foregroundStyle(Color.mono.textPrimary)
+                        .lineLimit(1)
+                    if let subtitle, !subtitle.isEmpty {
+                        Text(verbatim: subtitle)
+                            .monoFont(.caption)
+                            .foregroundStyle(Color.mono.textTertiary)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 8)
+                MoneyText(money: money, token: .amountRow)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Color.mono.accentText)
+                    .opacity(selected ? 1 : 0)
+                    .frame(width: 16)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 13)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    /// Закрывает лист и выполняет переход, когда анимация закрытия закончится.
+    private func close(then action: @escaping @MainActor () -> Void) {
+        dismiss()
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(380))
+            action()
+        }
     }
 }
 
@@ -264,60 +239,6 @@ struct InsightsSection: View {
                 .scrollPosition(id: $page)
                 .scrollIndicators(.hidden)
             }
-        }
-    }
-}
-
-// MARK: - Последние операции
-
-struct RecentTransactionsSection: View {
-    @Environment(FinanceStore.self) private var store
-    @Environment(Router.self) private var router
-
-    var body: some View {
-        let recent = Array(store.transactions.filter { !$0.isOpeningBalance }.prefix(5))
-        VStack(alignment: .leading, spacing: 12) {
-            ModuleHeader("Операции") {
-                SectionLink(title: "Все") { withMonoAnimation(.quick) { router.tab = .transactions } }
-            }
-            Group {
-                if recent.isEmpty {
-                    HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: "mic")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(Color.mono.accentText)
-                            .frame(width: 36, height: 36)
-                            .background(Circle().fill(Color.mono.surface2))
-                        Text("Операций пока нет. Нажмите на микрофон и скажите, например: «Потратил 85 тысяч на обед».")
-                            .monoFont(.callout)
-                            .foregroundStyle(Color.mono.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(16)
-                } else {
-                    VStack(spacing: 0) {
-                        ForEach(recent) { transaction in
-                            NavigationLink(value: Route.transaction(transaction.id)) {
-                                TransactionRow(
-                                    transaction: transaction,
-                                    category: transaction.categoryID.flatMap { store.categoryMap[$0] },
-                                    account: store.accountMap[transaction.accountID],
-                                    counterAccount: transaction.counterAccountID.flatMap { store.accountMap[$0] },
-                                    calendar: store.periods.calendar
-                                )
-                                .padding(.horizontal, 14)
-                            }
-                            .buttonStyle(.plain)
-                            if transaction.id != recent.last?.id {
-                                Hairline(inset: 66)
-                            }
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .monoSurface(radius: MonoTokens.Radius.xl, padding: 0)
         }
     }
 }

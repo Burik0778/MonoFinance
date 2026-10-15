@@ -1,6 +1,7 @@
 import SwiftUI
 import MonoCore
 import MonoAnalytics
+import MonoIntelligence
 
 /// Период аналитики.
 enum AnalyticsScope: String, Hashable, CaseIterable, Identifiable {
@@ -89,6 +90,7 @@ struct AnalyticsView: View {
     @Environment(\.appLanguage) private var language
     @State private var scope: AnalyticsScope = .month
     @State private var month: MonthKey?
+    @AppStorage("analytics.showsDetails") private var showsDetails = false
 
     var body: some View {
         let now = Date()
@@ -115,34 +117,42 @@ struct AnalyticsView: View {
                     }
                     SpendingHeadline(report: report, scope: scope, month: selectedMonth)
                         .riseIn()
-                    LedgerStrip(summary: report.summary)
-                        .riseIn(delay: 0.04)
                     if report.summary.isEmpty {
                         Text("За этот период операций нет.")
                             .monoFont(.callout)
                             .foregroundStyle(Color.mono.textTertiary)
                             .frame(maxWidth: .infinity, minHeight: 120)
                     } else {
+                        InsightsSection(insights: InsightEngine(analytics: analytics, budgets: store.budgets, recurring: store.recurring, language: language, now: now).insights())
                         CategoryDonutCard(items: report.categories, total: report.summary.spending, range: report.range)
-                            .riseIn(delay: 0.08)
+                            .riseIn(delay: 0.05)
                         TrendCard(points: report.series, granularity: report.granularity, calendar: store.periods.calendar)
-                        CategoryChangesCard(comparison: report.comparison, scope: scope)
-                        MandatorySplitCard(split: report.split)
-                        if !report.merchants.isEmpty {
-                            MerchantsCard(merchants: report.merchants, range: report.range)
-                        }
-                        if report.flows.count > 1 {
-                            AccountFlowsCard(flows: report.flows, range: report.range)
-                        }
-                        if !report.incomeCategories.isEmpty {
-                            IncomeSourcesCard(items: report.incomeCategories, total: report.summary.income)
-                        }
-                        if !report.unusual.isEmpty {
-                            UnusualExpensesCard(items: report.unusual)
-                        }
                     }
-                    RecurringCandidatesCard(candidates: analytics.recurringCandidates(now: now))
-                    ForecastCard(forecast: analytics.savingsForecast(months: 3, now: now, planned: store.planned))
+                    detailsToggle
+                    if showsDetails {
+                        Group {
+                            LedgerStrip(summary: report.summary)
+                            if !report.summary.isEmpty {
+                                CategoryChangesCard(comparison: report.comparison, scope: scope)
+                                MandatorySplitCard(split: report.split)
+                                if !report.merchants.isEmpty {
+                                    MerchantsCard(merchants: report.merchants, range: report.range)
+                                }
+                                if report.flows.count > 1 {
+                                    AccountFlowsCard(flows: report.flows, range: report.range)
+                                }
+                                if !report.incomeCategories.isEmpty {
+                                    IncomeSourcesCard(items: report.incomeCategories, total: report.summary.income)
+                                }
+                                if !report.unusual.isEmpty {
+                                    UnusualExpensesCard(items: report.unusual)
+                                }
+                            }
+                            RecurringCandidatesCard(candidates: analytics.recurringCandidates(now: now))
+                            ForecastCard(forecast: analytics.savingsForecast(months: 3, now: now, planned: store.planned))
+                        }
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
                 }
             }
             .padding(.horizontal, 20)
@@ -151,25 +161,46 @@ struct AnalyticsView: View {
         }
         .scrollIndicators(.hidden)
         .defaultScrollAnchor(DebugFlags.scrollAnchor)
-        .background(MonoBackdrop(haze: true))
-        .toolbar(.hidden, for: .navigationBar)
+        .background(MonoBackdrop())
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button { router.open(.plans) } label: { Image(systemName: "target") }
+                    .accessibilityLabel(Text("Бюджеты и цели"))
+                Button { router.present(.assistant) } label: { Image(systemName: "sparkles") }
+                    .accessibilityLabel(Text("Спросить MONO"))
+            }
+        }
         .refreshable { store.reload() }
     }
 
-    private var header: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 2) {
-                Kicker("Аналитика")
-                Text("Куда уходят деньги")
-                    .monoFont(.display)
-                    .foregroundStyle(Color.mono.textPrimary)
-                    .accessibilityAddTraits(.isHeader)
+    /// Подробный разбор свёрнут по умолчанию: на экране — только главное.
+    private var detailsToggle: some View {
+        Button {
+            Haptics.selection()
+            withMonoAnimation(.standard) { showsDetails.toggle() }
+        } label: {
+            HStack(spacing: 8) {
+                Text(showsDetails ? "Скрыть подробный разбор" : "Подробный разбор")
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .rotationEffect(.degrees(showsDetails ? 180 : 0))
             }
-            Spacer()
-            IconButton(systemName: "sparkles", label: "Спросить MONO", tint: Color.mono.accent) {
-                router.present(.assistant)
-            }
+            .monoFont(.subhead)
+            .foregroundStyle(Color.mono.textSecondary)
+            .frame(maxWidth: .infinity)
+            .frame(height: 48)
+            .background(Capsule(style: .continuous).strokeBorder(Color.mono.strokeStrong, lineWidth: 1))
+            .contentShape(Capsule())
         }
+        .buttonStyle(PressableStyle(scale: 0.98))
+    }
+
+    private var header: some View {
+        Text("Статистика")
+            .monoFont(.display)
+            .foregroundStyle(Color.mono.textPrimary)
+            .accessibilityAddTraits(.isHeader)
     }
 
     @ViewBuilder

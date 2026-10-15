@@ -54,7 +54,7 @@ struct AssistantView: View {
                 }
                 inputBar
             }
-            .background(MonoBackdrop(haze: true).ignoresSafeArea())
+            .background(MonoBackdrop().ignoresSafeArea())
             .navigationTitle(Text("Спросить MONO"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

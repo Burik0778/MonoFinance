@@ -74,8 +74,8 @@ struct ChipStyle: ButtonStyle {
     }
 }
 
-/// Основная кнопка: сплошной акцент. Одна такая кнопка на экран.
-/// `colors` оставлен для совместимости вызовов и не используется: у MONO один акцент.
+/// Основная кнопка: светлая на тёмном (и тёмная на светлом) — самый строгий и контрастный элемент экрана.
+/// Синий акцент оставлен для голоса и выбора. `colors` сохранён для совместимости вызовов и не используется.
 struct PrimaryButtonStyle: ButtonStyle {
     var colors: [Color] = []
     @Environment(\.isEnabled) private var isEnabled
@@ -83,16 +83,12 @@ struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .monoFont(.headline)
-            .foregroundStyle(isEnabled ? Color.mono.onAccent : Color.mono.textTertiary)
+            .foregroundStyle(isEnabled ? Color.mono.background : Color.mono.textTertiary)
             .frame(maxWidth: .infinity, minHeight: 54)
             .background(
                 RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous)
-                    .fill(isEnabled ? Color.mono.accent : Color.mono.surface3)
-                    .brightness(configuration.isPressed ? -0.06 : 0)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous)
-                    .strokeBorder(Color.white.opacity(isEnabled ? 0.10 : 0), lineWidth: 1)
+                    .fill(isEnabled ? Color.mono.textPrimary : Color.mono.surface2)
+                    .opacity(configuration.isPressed ? 0.86 : 1)
             )
             .scaleEffect(configuration.isPressed ? 0.985 : 1)
             .animation(SpringToken.quick.animation, value: configuration.isPressed)
