@@ -123,15 +123,6 @@ struct SettingsView: View {
                     FormRow(icon: "hand.tap.fill", tint: Color.mono.steel, title: "Тактильный отклик")
                 }
                 .tint(Color.mono.electric)
-                Button {
-                    if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
-                } label: {
-                    FormRow(icon: "globe", tint: Color.mono.steel, title: "Язык приложения",
-                            subtitle: Text("Русский, O‘zbekcha, English — в настройках iOS")) {
-                        Image(systemName: "arrow.up.forward.app").foregroundStyle(Color.mono.textTertiary)
-                    }
-                }
-                .buttonStyle(.plain)
             } header: {
                 Kicker("Оформление")
             }
