@@ -165,7 +165,6 @@ struct CategoryDonutCard: View {
     @Environment(FinanceStore.self) private var store
     @Environment(Router.self) private var router
     @Environment(\.appLanguage) private var language
-    @State private var selectedAngle: Double?
     @State private var selectedID: String?
 
     /// Доля, меньше которой категория уходит в «Остальное».
@@ -218,19 +217,11 @@ struct CategoryDonutCard: View {
                     .foregroundStyle(Color.mono.textTertiary)
             } else {
                 ZStack {
-                    Chart(slices) { slice in
-                        SectorMark(
-                            angle: .value("Сумма", slice.displayValue),
-                            innerRadius: .ratio(0.64),
-                            outerRadius: .ratio(slice.id == selectedID ? 1.0 : 0.94),
-                            angularInset: 1.5
-                        )
-                        .cornerRadius(4)
-                        .foregroundStyle(color(of: slice))
-                        .opacity(selectedID == nil || slice.id == selectedID ? 1 : 0.35)
+                    // Своё кольцо вместо SectorMark: Swift Charts падал (NaN) на некоторых наборах данных за год.
+                    DonutRing(segments: slices.map { DonutRing.Segment(id: $0.id, value: $0.displayValue, color: color(of: $0)) },
+                              selectedID: selectedID) { id in
+                        withMonoAnimation(.quick) { selectedID = selectedID == id ? nil : id }
                     }
-                    .chartLegend(.hidden)
-                    .chartAngleSelection(value: $selectedAngle)
                     .frame(height: 240)
                     .accessibilityLabel(Text("Кольцевая диаграмма расходов по категориям"))
 
@@ -253,10 +244,6 @@ struct CategoryDonutCard: View {
                     .allowsHitTesting(false)
                 }
                 .sensoryFeedback(.selection, trigger: selectedID)
-                .onChange(of: selectedAngle) { _, angle in
-                    guard let angle else { return }
-                    selectedID = slice(at: angle, in: slices)?.id
-                }
 
                 VStack(spacing: 0) {
                     ForEach(slices) { slice in
@@ -320,15 +307,83 @@ struct CategoryDonutCard: View {
         guard let id = slice.categoryID, let category = store.categoryMap[id] else { return Color.mono.neutral }
         return category.color.color
     }
+}
 
-    /// `chartAngleSelection` отдаёт накопленное значение — находим сектор, в который оно попало.
-    private func slice(at value: Double, in slices: [Slice]) -> Slice? {
-        var cumulative = 0.0
-        for slice in slices {
-            cumulative += slice.displayValue
-            if value <= cumulative { return slice }
+// MARK: - Кольцо
+
+/// Кольцевая диаграмма на SwiftUI-фигурах: дуги `Circle().trim`, выбор сектора касанием.
+/// Нечисловые и неположительные значения отбрасываются, поэтому отрисовка не может упасть.
+struct DonutRing: View {
+    struct Segment: Identifiable {
+        let id: String
+        let value: Double
+        let color: Color
+    }
+
+    /// Сектор как доля окружности: от `start` до `end` (0…1, от верхней точки по часовой стрелке).
+    struct Arc: Identifiable {
+        let segment: Segment
+        let start: Double
+        let end: Double
+        var id: String { segment.id }
+    }
+
+    let segments: [Segment]
+    let selectedID: String?
+    let onSelect: (String) -> Void
+
+    private var arcs: [Arc] {
+        let valid = segments.filter { $0.value.isFinite && $0.value > 0 }
+        let total = valid.reduce(0) { $0 + $1.value }
+        guard total > 0, total.isFinite else { return [] }
+        var cursor = 0.0
+        return valid.map { segment in
+            let start = cursor
+            cursor = min(1, cursor + segment.value / total)
+            return Arc(segment: segment, start: start, end: cursor)
         }
-        return slices.last
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = Double(max(min(proxy.size.width, proxy.size.height), 1))
+            let lineWidth = size * 0.16
+            let diameter = max(size - lineWidth * 1.2, 1)
+            let arcs = self.arcs
+            let gap = arcs.count > 1 ? 0.004 : 0
+            ZStack {
+                ForEach(arcs) { arc in
+                    let from = min(arc.start + gap, arc.end)
+                    let to = max(arc.end - gap, from)
+                    let selected = arc.id == selectedID
+                    Circle()
+                        .trim(from: CGFloat(from), to: CGFloat(to))
+                        .stroke(arc.segment.color, style: StrokeStyle(lineWidth: CGFloat(selected ? lineWidth * 1.18 : lineWidth), lineCap: .butt))
+                        .rotationEffect(.degrees(-90))
+                        .opacity(selectedID == nil || selected ? 1 : 0.35)
+                }
+            }
+            .frame(width: CGFloat(diameter), height: CGFloat(diameter))
+            .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
+            .contentShape(Rectangle())
+            .onTapGesture(coordinateSpace: .local) { location in
+                let dx = Double(location.x) - Double(proxy.size.width) / 2
+                let dy = Double(location.y) - Double(proxy.size.height) / 2
+                select(dx: dx, dy: dy, arcs: arcs, radius: diameter / 2, lineWidth: lineWidth)
+            }
+        }
+    }
+
+    /// Касание по кольцу: угол от верхней точки по часовой стрелке → сектор.
+    private func select(dx: Double, dy: Double, arcs: [Arc], radius: Double, lineWidth: Double) {
+        let distance = (dx * dx + dy * dy).squareRoot()
+        guard abs(distance - radius) <= lineWidth else { return }
+        var angle = atan2(dy, dx) + Double.pi / 2
+        if angle < 0 { angle += 2 * Double.pi }
+        let fraction = angle / (2 * Double.pi)
+        if let arc = arcs.first(where: { fraction >= $0.start && fraction <= $0.end }) {
+            onSelect(arc.id)
+        }
     }
 }
 
