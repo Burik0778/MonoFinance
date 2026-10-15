@@ -147,6 +147,11 @@ jobs:
             xcrun simctl launch "$UDID" uz.mono.finance -AppleLanguages "(ru)" -AppleLocale ru_RU -monoScreenshots "$@" || true
             sleep 8
             xcrun simctl io "$UDID" screenshot "shots/$name.png" || true
+            # Пустой кадр (приложение ещё на экране запуска) весит мало — снимаем ещё раз.
+            if [ "$(stat -f%z "shots/$name.png" 2>/dev/null || echo 0)" -lt 150000 ]; then
+              sleep 8
+              xcrun simctl io "$UDID" screenshot "shots/$name.png" || true
+            fi
           }
           shoot 01-overview -monoTab overview
           shoot 01b-overview-middle -monoTab overview -monoScroll center

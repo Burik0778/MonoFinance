@@ -52,9 +52,13 @@ struct TransactionsView: View {
                                            counterAccount: transaction.counterAccountID.flatMap { accounts[$0] },
                                            calendar: store.periods.calendar)
                         }
-                        .listRowBackground(Color.mono.surface1)
-                        .listRowSeparatorTint(Color.mono.strokeSubtle)
-                        .alignmentGuide(.listRowSeparatorLeading) { _ in 52 }
+                        // Каждая операция — отдельная плитка, как на главной.
+                        .listRowBackground(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(Color.mono.surface1)
+                                .padding(.vertical, 3)
+                        )
+                        .listRowSeparator(.hidden)
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) { pendingDelete = transaction } label: {
                                 Label("Удалить", systemImage: "trash")
