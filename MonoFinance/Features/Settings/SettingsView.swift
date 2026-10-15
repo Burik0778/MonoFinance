@@ -159,7 +159,7 @@ struct SettingsView: View {
     }
 
     private var baseCurrencyOptions: [Currency] {
-        var list: [Currency] = [.uzs, .usd, .eur]
+        var list: [Currency] = [.uzs, .usd, .eur, .rub]
         for account in store.activeAccounts where !list.contains(account.currency) { list.append(account.currency) }
         return list
     }
@@ -175,9 +175,14 @@ struct SettingsView: View {
         guard currency != store.baseCurrency else { return }
         do {
             try store.setBaseCurrency(currency)
-            if currency != .uzs {
-                toasts.show(ToastMessage(text: String(localized: "Курсы ЦБ даются к суму. Для другой основной валюты добавьте курсы вручную."),
-                                         symbol: "info.circle.fill", tint: Color.mono.accent), duration: .seconds(6))
+            if settings.cbuRatesEnabled && !store.isDemo {
+                // Сразу подтягиваем курсы ЦБ: при основной валюте не в сумах они пересчитываются через сум.
+                Task {
+                    if let rates = try? await ExchangeRateService().fetchLatest(calendar: store.periods.calendar) {
+                        try? store.saveRates(rates)
+                        settings.lastRatesUpdate = Date()
+                    }
+                }
             }
         } catch {
             toasts.show(ToastMessage(text: AppError(error).message, symbol: "xmark.octagon.fill", tint: Color.mono.negative))

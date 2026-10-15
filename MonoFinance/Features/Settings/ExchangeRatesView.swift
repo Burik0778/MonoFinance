@@ -2,6 +2,7 @@ import SwiftUI
 import MonoCore
 
 /// Курсы валют: официальные курсы ЦБ РУз (к суму) и ручные курсы. Без курса операции в валюте не входят в общие итоги.
+/// При основной валюте не в сумах курсы ЦБ пересчитываются через сум (кросс-курс) автоматически.
 struct ExchangeRatesView: View {
     @Environment(FinanceStore.self) private var store
     @Environment(SettingsStore.self) private var settings
@@ -11,6 +12,8 @@ struct ExchangeRatesView: View {
 
     @State private var loading = false
     @State private var manualCurrency: Currency = .usd
+    /// В какой валюте указан ручной курс: «1 USD = 12 500 сум».
+    @State private var manualQuote: Currency?
     @State private var manualRate = ""
     @State private var error: String?
 
@@ -31,7 +34,7 @@ struct ExchangeRatesView: View {
                                 .foregroundStyle(Color.mono.textPrimary)
                             Spacer()
                             if let rate = converter.rate(for: currency) {
-                                Text(verbatim: rateText(currency: currency, rate: rate))
+                                Text(verbatim: baseRateText(currency: currency, rate: rate))
                                     .monoFont(.callout, digits: true)
                                     .foregroundStyle(Color.mono.textSecondary)
                             } else {
@@ -70,11 +73,11 @@ struct ExchangeRatesView: View {
                         }
                     }
                 }
-                .disabled(loading || store.baseCurrency != .uzs)
+                .disabled(loading)
                 if store.baseCurrency != .uzs {
-                    Text("Курсы ЦБ публикуются к суму. При основной валюте \(store.baseCurrency.code) добавьте курсы вручную.")
+                    Text("Курсы ЦБ публикуются к суму. Для основной валюты \(store.baseCurrency.code) они пересчитываются через сум автоматически.")
                         .monoFont(.caption)
-                        .foregroundStyle(Color.mono.warning)
+                        .foregroundStyle(Color.mono.textSecondary)
                 }
                 if let error {
                     Text(verbatim: error)
@@ -90,21 +93,26 @@ struct ExchangeRatesView: View {
             .listRowBackground(Color.mono.surface1)
 
             Section {
-                HStack(spacing: 10) {
-                    CurrencyMenu(selection: $manualCurrency, options: Currency.common.filter { $0 != store.baseCurrency })
+                HStack(spacing: 8) {
+                    Text(verbatim: "1")
+                        .monoFont(.body, digits: true)
+                        .foregroundStyle(Color.mono.textSecondary)
+                    CurrencyMenu(selection: $manualCurrency, options: Currency.common)
+                    Text(verbatim: "=")
+                        .monoFont(.body)
+                        .foregroundStyle(Color.mono.textSecondary)
                     TextField("Курс", text: $manualRate)
                         .keyboardType(.decimalPad)
                         .monoFont(.body, digits: true)
-                    Text(verbatim: formatter.symbol(for: store.baseCurrency).text)
-                        .monoFont(.callout)
-                        .foregroundStyle(Color.mono.textSecondary)
-                    Button("Добавить") { addManual() }
-                        .disabled(DecimalMath.parse(manualRate.replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: " ", with: "")) == nil)
+                    CurrencyMenu(selection: Binding(get: { quoteCurrency }, set: { manualQuote = $0 }),
+                                 options: Currency.common.filter { $0 != manualCurrency })
                 }
+                Button("Добавить курс") { addManual() }
+                    .disabled(parsedManualRate == nil || quoteCurrency == manualCurrency)
             } header: {
                 Kicker("Ручной курс")
             } footer: {
-                Text("Ручной курс не перезаписывается курсом ЦБ. Удалите его, чтобы снова использовать официальный.")
+                Text("Например: 1 USD = 12 500 UZS. Ручной курс не перезаписывается курсом ЦБ. Удалите его, чтобы снова использовать официальный.")
                     .monoFont(.caption)
             }
             .listRowBackground(Color.mono.surface1)
@@ -149,6 +157,26 @@ struct ExchangeRatesView: View {
         .navigationTitle(Text("Курсы валют"))
     }
 
+    /// Валюта, в которой указан ручной курс: по умолчанию основная, а для самой основной — сум (или доллар).
+    private var quoteCurrency: Currency {
+        if let manualQuote, manualQuote != manualCurrency { return manualQuote }
+        if manualCurrency != store.baseCurrency { return store.baseCurrency }
+        return manualCurrency == .uzs ? .usd : .uzs
+    }
+
+    private var parsedManualRate: Decimal? {
+        let cleaned = manualRate.replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: "\u{202F}", with: "").replacingOccurrences(of: "\u{00A0}", with: "")
+        guard let value = DecimalMath.parse(cleaned), value > 0 else { return nil }
+        return value
+    }
+
+    /// Курс к основной валюте в удобном виде: «1 USD = 12 000 сум» или, если валюта дешевле, «1 $ = 12 000 UZS».
+    private func baseRateText(currency: Currency, rate: Decimal) -> String {
+        if rate >= 1 { return rateText(currency: currency, rate: rate) }
+        return rateText(currency: store.baseCurrency, rate: 1 / rate, base: currency)
+    }
+
     private func rateText(currency: Currency, rate: Decimal, base: Currency? = nil) -> String {
         let baseCurrency = base ?? store.baseCurrency
         let value = Money(major: rate, currency: baseCurrency, rounding: .halfEven).map { formatter.string($0, fraction: .always) } ?? "\(rate)"
@@ -171,9 +199,8 @@ struct ExchangeRatesView: View {
     }
 
     private func addManual() {
-        let cleaned = manualRate.replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: " ", with: "").replacingOccurrences(of: "\u{202F}", with: "")
-        guard let value = DecimalMath.parse(cleaned), value > 0 else { return }
-        let rate = ExchangeRate(currency: manualCurrency, baseCurrency: store.baseCurrency, rate: value, date: Date(), source: .manual)
+        guard let value = parsedManualRate, quoteCurrency != manualCurrency else { return }
+        let rate = ExchangeRate(currency: manualCurrency, baseCurrency: quoteCurrency, rate: value, date: Date(), source: .manual)
         do {
             try store.saveRates([rate], keepManual: false)
             manualRate = ""

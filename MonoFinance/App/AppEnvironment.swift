@@ -214,6 +214,26 @@ enum DebugFlags {
         #endif
     }()
 
+    /// `-monoScope month|last30|last90|year` — начальный период статистики; `-monoDetails` — подробный разбор раскрыт.
+    static let analyticsScope: AnalyticsScope = {
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        if let index = arguments.firstIndex(of: "-monoScope"), arguments.indices.contains(index + 1),
+           let scope = AnalyticsScope(rawValue: arguments[index + 1]) {
+            return scope
+        }
+        #endif
+        return .month
+    }()
+
+    static let analyticsDetails: Bool = {
+        #if DEBUG
+        return ProcessInfo.processInfo.arguments.contains("-monoDetails")
+        #else
+        return false
+        #endif
+    }()
+
     /// `-monoScroll top|center|bottom` — начальная позиция прокрутки длинных экранов.
     static let scrollAnchor: UnitPoint = {
         #if DEBUG

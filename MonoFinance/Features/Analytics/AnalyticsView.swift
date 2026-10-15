@@ -88,7 +88,7 @@ struct AnalyticsView: View {
     @Environment(FinanceStore.self) private var store
     @Environment(Router.self) private var router
     @Environment(\.appLanguage) private var language
-    @State private var scope: AnalyticsScope = .month
+    @State private var scope: AnalyticsScope = DebugFlags.analyticsScope
     @State private var month: MonthKey?
     @AppStorage("analytics.showsDetails") private var showsDetails = false
     /// Фильтр «только крупные траты»: порог в основных единицах базовой валюты, 0 — все траты.
@@ -181,6 +181,7 @@ struct AnalyticsView: View {
             }
         }
         .refreshable { store.reload() }
+        .onAppear { if DebugFlags.analyticsDetails { showsDetails = true } }
     }
 
     /// Подробный разбор свёрнут по умолчанию: на экране — только главное.

@@ -84,7 +84,8 @@ struct RootView: View {
         if settings.cbuRatesEnabled {
             let stale = settings.lastRatesUpdate.map { Date().timeIntervalSince($0) > 6 * 3600 } ?? true
             let needsRates = store.activeAccounts.contains { $0.currency != store.baseCurrency }
-            if stale && needsRates && store.baseCurrency == .uzs {
+            // Курсы ЦБ даются к суму; при другой основной валюте пересчёт идёт через сум (кросс-курс).
+            if stale && needsRates {
                 if let rates = try? await ExchangeRateService().fetchLatest(calendar: store.periods.calendar) {
                     try? store.saveRates(rates)
                     settings.lastRatesUpdate = Date()

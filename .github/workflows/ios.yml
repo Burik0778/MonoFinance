@@ -160,6 +160,9 @@ jobs:
           shoot 03-analytics -monoTab analytics
           shoot 03b-analytics-middle -monoTab analytics -monoScroll center
           shoot 03c-analytics-bottom -monoTab analytics -monoScroll bottom
+          shoot 03d-analytics-year -monoTab analytics -monoScope year
+          shoot 03e-analytics-year-details -monoTab analytics -monoScope year -monoDetails -monoScroll bottom
+          shoot 03f-analytics-90-details -monoTab analytics -monoScope last90 -monoDetails -monoScroll center
           shoot 04-plans -monoTab plans
           shoot 04b-plans-bottom -monoTab plans -monoScroll bottom
           shoot 05-voice -monoVoice "Сегодня потратил 120 тысяч на такси и 75 тысяч на кофе с карты Капиталбанка"
@@ -183,7 +186,10 @@ jobs:
           shoot 19-light-transactions -monoTab transactions -monoLight
           shoot 20-light-plans -monoTab plans -monoLight
           xcrun simctl ui "$UDID" appearance dark || true
-          ls -la shots
+          # Журналы падений приложения — чтобы видеть точное место вылета.
+          mkdir -p shots/crashes
+          find ~/Library/Logs/DiagnosticReports -name 'MonoFinance*' -newer "$APP" -exec cp {} shots/crashes/ \; 2>/dev/null || true
+          ls -la shots shots/crashes
       - name: Publish screenshots to ci-shots branch
         if: always()
         env:

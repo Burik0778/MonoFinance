@@ -27,15 +27,41 @@ public struct ExchangeRate: Hashable, Codable, Sendable, Identifiable {
 }
 
 /// Конвертация через базовую валюту. Если курса нет — возвращает `nil`, ничего не придумывая.
+///
+/// Курсы могут быть заданы к любой валюте: курсы ЦБ даются к суму, ручные — к выбранной валюте.
+/// Стоимость каждой валюты в базовой выводится по цепочке (кросс-курс): при основной валюте USD
+/// и курсах ЦБ «1 USD = 12 000 сум», «1 RUB = 150 сум» получаем «1 сум = 1/12 000 $», «1 RUB = 0,0125 $».
 public struct CurrencyConverter: Sendable {
     public let base: Currency
+    /// Сколько единиц базовой валюты стоит единица валюты.
     private let rates: [Currency: Decimal]
 
     public init(base: Currency, rates: [ExchangeRate]) {
         self.base = base
         var map: [Currency: Decimal] = [base: 1]
-        for rate in rates where rate.baseCurrency == base && rate.rate > 0 {
+        let valid = rates.filter { $0.rate > 0 && $0.currency != $0.baseCurrency }
+        // Прямые курсы к базовой валюте — в первую очередь, ручные важнее курсов ЦБ.
+        let ordered = valid.sorted { lhs, rhs in
+            let l = (lhs.baseCurrency == base ? 0 : 2) + (lhs.source == .manual ? 0 : 1)
+            let r = (rhs.baseCurrency == base ? 0 : 2) + (rhs.source == .manual ? 0 : 1)
+            return l < r
+        }
+        for rate in ordered where rate.baseCurrency == base && map[rate.currency] == nil {
             map[rate.currency] = rate.rate
+        }
+        // Остальные — через уже известные валюты, в обе стороны, пока что-то находится.
+        var changed = true
+        while changed {
+            changed = false
+            for rate in ordered {
+                if map[rate.currency] == nil, let quote = map[rate.baseCurrency] {
+                    map[rate.currency] = rate.rate * quote
+                    changed = true
+                } else if map[rate.baseCurrency] == nil, let value = map[rate.currency] {
+                    map[rate.baseCurrency] = value / rate.rate
+                    changed = true
+                }
+            }
         }
         self.rates = map
     }
