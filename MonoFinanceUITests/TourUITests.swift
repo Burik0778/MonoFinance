@@ -13,7 +13,7 @@ final class TourUITests: XCTestCase {
 
     func testTour() {
         app.launch()
-        wait(4)
+        wait(3.5)
 
         // Обзор: прокрутка вниз и обратно.
         for _ in 0..<3 {
@@ -24,17 +24,23 @@ final class TourUITests: XCTestCase {
         wait(1)
 
         // Скрыть и показать суммы.
-        tap(app.buttons["Скрыть суммы"])
+        tap(button("Скрыть суммы"))
         wait(1.2)
-        tap(app.buttons["Показать суммы"])
+        tap(button("Показать суммы"))
         wait(1)
 
         // Голосовой ввод: сфера, затем ввод фразы текстом (в симуляторе нет микрофона).
-        tap(app.buttons["Голосовой ввод операции"])
+        tap(button("Голосовой ввод операции"))
         wait(1.5)
         allowSystemAlerts()
-        wait(2.5)
-        tap(app.buttons["Ввести текстом"])
+        // В симуляторе русская речь распознаётся только серверами Apple — даём согласие, чтобы показать запись.
+        if button("Разрешить серверы Apple").waitForExistence(timeout: 2) {
+            tap(button("Разрешить серверы Apple"))
+            wait(1)
+            allowSystemAlerts()
+        }
+        wait(3)
+        tap(button("Ввести текстом"))
         wait(1)
         let field = app.textViews.firstMatch.exists ? app.textViews.firstMatch : app.textFields.firstMatch
         if field.waitForExistence(timeout: 3) {
@@ -42,16 +48,18 @@ final class TourUITests: XCTestCase {
             field.typeText("Вчера купил продукты в Корзинке на 245 тысяч и потратил 40 тысяч на такси")
             wait(1)
         }
-        tap(app.buttons["Разобрать фразу"])
+        tap(button("Разобрать фразу"))
         wait(3)
         app.swipeUp(velocity: .slow)
         wait(1.5)
-        let save = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Сохранить'")).firstMatch
-        tap(save)
+        tap(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Сохранить'")).firstMatch)
         wait(2.5)
+        // Если лист голосового ввода всё ещё открыт — закрываем, чтобы продолжить экскурсию.
+        if button("Закрыть").exists { tap(button("Закрыть")) }
+        wait(1)
 
         // Операции: список и карточка операции.
-        tap(app.buttons["Операции"])
+        tap(button("Операции"))
         wait(2)
         app.swipeUp(velocity: .slow)
         wait(1.5)
@@ -67,7 +75,7 @@ final class TourUITests: XCTestCase {
         }
 
         // Аналитика.
-        tap(app.buttons["Аналитика"])
+        tap(button("Аналитика"))
         wait(2.5)
         for _ in 0..<4 {
             app.swipeUp(velocity: .slow)
@@ -77,7 +85,7 @@ final class TourUITests: XCTestCase {
         wait(1)
 
         // Планы.
-        tap(app.buttons["Планы"])
+        tap(button("Планы"))
         wait(2.5)
         app.swipeUp(velocity: .slow)
         wait(2)
@@ -88,22 +96,22 @@ final class TourUITests: XCTestCase {
         wait(1)
 
         // Новый расход с цифровой клавиатуры.
-        tap(app.buttons["Обзор"])
+        tap(button("Обзор"))
         wait(1.5)
-        tap(app.buttons["Расход"])
+        tap(button("Расход"))
         wait(1.5)
         for digit in ["1", "5", "0", "0", "0", "0"] {
-            tap(app.buttons[digit], timeout: 2)
+            tap(button(digit), timeout: 2)
             wait(0.25)
         }
         wait(0.8)
-        tap(app.buttons["Такси"], timeout: 2)
+        tap(button("Такси"), timeout: 2)
         wait(1)
-        tap(app.buttons["Сохранить"], timeout: 2)
+        tap(button("Сохранить"), timeout: 2)
         wait(2.5)
 
         // Настройки.
-        tap(app.buttons["Настройки"])
+        tap(button("Настройки"))
         wait(2)
         app.swipeUp(velocity: .slow)
         wait(1.5)
@@ -115,6 +123,10 @@ final class TourUITests: XCTestCase {
     }
 
     // MARK: - Помощники
+
+    private func button(_ label: String) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label == %@", label)).firstMatch
+    }
 
     private func wait(_ seconds: Double) {
         Thread.sleep(forTimeInterval: seconds)

@@ -44,6 +44,7 @@ jobs:
         run: which ffmpeg || brew install ffmpeg
       - name: Record tour
         run: |
+          python3 -c 'import time; print(time.time())' > "$RUNNER_TEMP/rec_start.txt"
           xcrun simctl io "$UDID" recordVideo --codec=h264 --force "$RUNNER_TEMP/tour.mov" &
           REC=$!
           sleep 3
@@ -54,13 +55,27 @@ jobs:
             -derivedDataPath build-ui \
             -only-testing:MonoFinanceUITests/TourUITests/testTour \
             CODE_SIGNING_ALLOWED=NO 2>&1 | tee ui-test.log | grep -E 'error|Test Case|passed|failed' | head -60 || true
-          sleep 2
+          sleep 3
           kill -INT $REC || true
           sleep 5
           ls -lh "$RUNNER_TEMP/tour.mov"
       - name: Compress video
         run: |
-          ffmpeg -y -loglevel error -i "$RUNNER_TEMP/tour.mov" \
+          # Обрезаем начало записи (запуск тестового раннера) — видео начинается с запуска приложения.
+          SUITE=$(grep -m1 "Test Suite 'Selected tests' started at" ui-test.log | sed -E "s/.*started at //")
+          OFFSET=$(python3 - "$(cat "$RUNNER_TEMP/rec_start.txt")" "$SUITE" <<'PY'
+          import sys, time, datetime
+          rec = float(sys.argv[1])
+          try:
+              dt = datetime.datetime.strptime(sys.argv[2].strip(), "%Y-%m-%d %H:%M:%S.%f")
+              start = time.mktime(dt.timetuple()) + dt.microsecond / 1e6
+              print(round(max(0.0, start - rec + 1.5), 2))
+          except Exception:
+              print(0)
+          PY
+          )
+          echo "Trim offset: $OFFSET s"
+          ffmpeg -y -loglevel error -ss "$OFFSET" -i "$RUNNER_TEMP/tour.mov" \
             -vf "scale=720:-2,fps=30" -c:v libx264 -preset veryfast -crf 26 -pix_fmt yuv420p -movflags +faststart -an \
             MONO-tour.mp4
           ls -lh MONO-tour.mp4
