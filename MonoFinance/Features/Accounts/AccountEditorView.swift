@@ -178,7 +178,7 @@ struct AccountEditorView: View {
                         Toggle("Основной счёт для голосового ввода", isOn: $makeDefault)
                     }
                     .monoFont(.callout)
-                    .tint(Color.mono.accent)
+                    .tint(Color.mono.positive)
                     .monoSurface(padding: 16)
 
                     if let error {

@@ -102,7 +102,7 @@ struct SettingsView: View {
                 Toggle(isOn: Binding(get: { settings.remindersEnabled }, set: { value in Task { await setReminders(value) } })) {
                     FormRow(icon: "bell.badge.fill", tint: Color.mono.warning, title: "Напоминания о платежах")
                 }
-                .tint(Color.mono.accent)
+                .tint(Color.mono.positive)
                 NavigationLink(value: Route.backup) {
                     FormRow(icon: "externaldrive.fill.badge.checkmark", tint: Color.mono.accent, title: "Резервные копии и экспорт")
                 }
@@ -122,7 +122,7 @@ struct SettingsView: View {
                 Toggle(isOn: $settings.haptics) {
                     FormRow(icon: "hand.tap.fill", tint: Color.mono.neutral, title: "Тактильный отклик")
                 }
-                .tint(Color.mono.accent)
+                .tint(Color.mono.positive)
             } header: {
                 Kicker("Оформление")
             }
@@ -133,7 +133,7 @@ struct SettingsView: View {
                     FormRow(icon: "theatermasks.fill", tint: Color.mono.accent, title: "Демо-режим",
                             subtitle: Text("Отдельная база с примером данных. Ваши данные не затрагиваются."))
                 }
-                .tint(Color.mono.accent)
+                .tint(Color.mono.positive)
                 NavigationLink(value: Route.about) {
                     FormRow(icon: "info.circle.fill", tint: Color.mono.neutral, title: "О приложении")
                 }

@@ -1,41 +1,41 @@
 /* Сгенерировано Tools/generate_tokens.py из Design/tokens.json */
 :root, .theme-dark {
-  --background: rgba(8, 9, 12, 1.000);
-  --backgroundRaised: rgba(14, 16, 20, 1.000);
-  --surface1: rgba(19, 21, 25, 1.000);
-  --surface2: rgba(26, 29, 34, 1.000);
-  --surface3: rgba(35, 39, 46, 1.000);
-  --strokeSubtle: rgba(255, 255, 255, 0.055);
-  --strokeStrong: rgba(255, 255, 255, 0.110);
-  --textPrimary: rgba(238, 240, 243, 1.000);
-  --textSecondary: rgba(160, 165, 174, 1.000);
-  --textTertiary: rgba(111, 116, 126, 1.000);
-  --accent: rgba(61, 112, 224, 1.000);
-  --accentText: rgba(134, 168, 244, 1.000);
-  --onAccent: rgba(255, 255, 255, 1.000);
-  --positive: rgba(39, 181, 140, 1.000);
-  --negative: rgba(224, 103, 110, 1.000);
-  --warning: rgba(217, 165, 90, 1.000);
-  --neutral: rgba(93, 98, 108, 1.000);
+  --background: rgba(0, 0, 0, 1.000);
+  --backgroundRaised: rgba(12, 12, 13, 1.000);
+  --surface1: rgba(18, 18, 20, 1.000);
+  --surface2: rgba(27, 27, 30, 1.000);
+  --surface3: rgba(38, 38, 42, 1.000);
+  --strokeSubtle: rgba(255, 255, 255, 0.039);
+  --strokeStrong: rgba(255, 255, 255, 0.090);
+  --textPrimary: rgba(255, 255, 255, 1.000);
+  --textSecondary: rgba(161, 161, 166, 1.000);
+  --textTertiary: rgba(110, 110, 115, 1.000);
+  --accent: rgba(255, 255, 255, 1.000);
+  --accentText: rgba(255, 255, 255, 1.000);
+  --onAccent: rgba(0, 0, 0, 1.000);
+  --positive: rgba(52, 199, 123, 1.000);
+  --negative: rgba(242, 92, 92, 1.000);
+  --warning: rgba(245, 165, 36, 1.000);
+  --neutral: rgba(72, 72, 77, 1.000);
 }
 .theme-light {
-  --background: rgba(244, 245, 247, 1.000);
-  --backgroundRaised: rgba(236, 237, 240, 1.000);
+  --background: rgba(242, 242, 244, 1.000);
+  --backgroundRaised: rgba(236, 236, 239, 1.000);
   --surface1: rgba(255, 255, 255, 1.000);
-  --surface2: rgba(244, 245, 247, 1.000);
-  --surface3: rgba(230, 232, 236, 1.000);
-  --strokeSubtle: rgba(11, 16, 24, 0.063);
-  --strokeStrong: rgba(11, 16, 24, 0.133);
-  --textPrimary: rgba(12, 14, 18, 1.000);
-  --textSecondary: rgba(76, 81, 91, 1.000);
-  --textTertiary: rgba(106, 111, 121, 1.000);
-  --accent: rgba(46, 98, 214, 1.000);
-  --accentText: rgba(37, 86, 196, 1.000);
+  --surface2: rgba(244, 244, 246, 1.000);
+  --surface3: rgba(228, 228, 232, 1.000);
+  --strokeSubtle: rgba(0, 0, 0, 0.051);
+  --strokeStrong: rgba(0, 0, 0, 0.102);
+  --textPrimary: rgba(10, 10, 11, 1.000);
+  --textSecondary: rgba(85, 85, 91, 1.000);
+  --textTertiary: rgba(110, 110, 115, 1.000);
+  --accent: rgba(10, 10, 11, 1.000);
+  --accentText: rgba(10, 10, 11, 1.000);
   --onAccent: rgba(255, 255, 255, 1.000);
-  --positive: rgba(15, 125, 93, 1.000);
-  --negative: rgba(194, 52, 62, 1.000);
-  --warning: rgba(148, 101, 15, 1.000);
-  --neutral: rgba(162, 166, 174, 1.000);
+  --positive: rgba(20, 134, 79, 1.000);
+  --negative: rgba(201, 48, 44, 1.000);
+  --warning: rgba(154, 91, 0, 1.000);
+  --neutral: rgba(176, 176, 182, 1.000);
 }
 :root {
   --skin-aurora: linear-gradient(135deg, #2A4A8F, #18305E, #0E1B37);

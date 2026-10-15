@@ -92,9 +92,9 @@ struct RecurringListView: View {
             if rule.isActive {
                 Button("Пропустить", systemImage: "forward.end.fill") {
                     try? store.skipRecurring(rule)
-                    toasts.show(ToastMessage(text: String(localized: "Ближайший платёж пропущен"), symbol: "forward.end.fill", tint: Color.mono.accent))
+                    toasts.show(ToastMessage(text: String(localized: "Ближайший платёж пропущен"), symbol: "forward.end.fill", tint: Color.mono.textPrimary))
                 }
-                .tint(Color.mono.accent)
+                .tint(Color.mono.neutral)
             }
         }
     }
@@ -158,7 +158,7 @@ struct RecurringEditorView: View {
                             .monoFont(.body)
                             .foregroundStyle(Color.mono.textSecondary)
                     }
-                    .tint(Color.mono.accent)
+                    .tint(Color.mono.textPrimary)
                     .padding(.horizontal, 14)
                     .frame(minHeight: 50)
                     .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.surface2))

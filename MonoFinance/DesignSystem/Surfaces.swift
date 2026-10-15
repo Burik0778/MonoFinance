@@ -17,8 +17,10 @@ struct MonoSurface: ViewModifier {
             .padding(padding ?? 0)
             .background(shape.fill(fill ?? (level >= 2 ? Color.mono.surface2 : Color.mono.surface1)))
             .overlay {
-                shape.strokeBorder(contrast == .increased ? Color.mono.strokeStrong : Color.mono.strokeSubtle,
-                                   lineWidth: contrast == .increased ? 1.5 : 1)
+                // Без рамок: глубину даёт только тон. Контур — лишь при «Повышенном контрасте».
+                if contrast == .increased {
+                    shape.strokeBorder(Color.mono.strokeStrong, lineWidth: 1.5)
+                }
             }
             .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 12, x: 0, y: 4)
     }
@@ -60,14 +62,10 @@ struct ChipStyle: ButtonStyle {
             .monoFont(.subhead)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .foregroundStyle(isSelected ? Color.mono.textPrimary : Color.mono.textSecondary)
+            .foregroundStyle(isSelected ? Color.mono.background : Color.mono.textSecondary)
             .background(
                 Capsule(style: .continuous)
-                    .fill(isSelected ? AnyShapeStyle(tint.opacity(0.22)) : AnyShapeStyle(Color.mono.surface2))
-            )
-            .overlay(
-                Capsule(style: .continuous)
-                    .strokeBorder(isSelected ? tint.opacity(0.55) : Color.mono.strokeSubtle, lineWidth: 1)
+                    .fill(isSelected ? Color.mono.textPrimary : Color.mono.surface2)
             )
             .scaleEffect(configuration.isPressed ? 0.96 : 1)
             .animation(SpringToken.quick.animation, value: configuration.isPressed)
@@ -106,7 +104,6 @@ struct SecondaryButtonStyle: ButtonStyle {
             .foregroundStyle(tint)
             .frame(maxWidth: .infinity, minHeight: 50)
             .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(configuration.isPressed ? Color.mono.surface3 : Color.mono.surface2))
-            .overlay(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).strokeBorder(Color.mono.strokeSubtle, lineWidth: 1))
             .scaleEffect(configuration.isPressed ? 0.985 : 1)
             .animation(SpringToken.quick.animation, value: configuration.isPressed)
     }
@@ -126,7 +123,6 @@ struct IconButton: View {
                 .foregroundStyle(tint)
                 .frame(width: 40, height: 40)
                 .background(Circle().fill(Color.mono.surface1))
-                .overlay(Circle().strokeBorder(Color.mono.strokeSubtle, lineWidth: 1))
                 .contentShape(Circle())
         }
         .buttonStyle(PressableStyle(scale: 0.9))
@@ -150,7 +146,7 @@ struct SectionLink: View {
                     .font(.system(size: 10, weight: .bold))
             }
             .monoFont(.subhead)
-            .foregroundStyle(Color.mono.accentText)
+            .foregroundStyle(Color.mono.textSecondary)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

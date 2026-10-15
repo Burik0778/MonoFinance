@@ -65,6 +65,7 @@ struct OverviewView: View {
             .padding(.horizontal, 20)
             .padding(.top, 8)
             .padding(.bottom, 24)
+            .animation(.snappy(duration: 0.35), value: scopeID)
         }
         .scrollIndicators(.hidden)
         .defaultScrollAnchor(DebugFlags.scrollAnchor)
@@ -133,7 +134,6 @@ private struct HomeTopBar: View {
                 .padding(.trailing, 14)
                 .padding(.vertical, 7)
                 .background(Capsule(style: .continuous).fill(Color.mono.surface1))
-                .overlay(Capsule(style: .continuous).strokeBorder(Color.mono.strokeSubtle, lineWidth: 1))
                 .contentShape(Capsule())
             }
             .buttonStyle(PressableStyle(scale: 0.97))
@@ -148,7 +148,6 @@ private struct HomeTopBar: View {
             }
             .padding(.horizontal, 4)
             .background(Capsule(style: .continuous).fill(Color.mono.surface1))
-            .overlay(Capsule(style: .continuous).strokeBorder(Color.mono.strokeSubtle, lineWidth: 1))
         }
     }
 
@@ -215,6 +214,9 @@ private struct HomeHero: View {
     @Environment(FinanceStore.self) private var store
     @Environment(Router.self) private var router
     @Environment(\.appLanguage) private var language
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Показанная сумма: при открытии «накручивается» от нуля, при смене счёта — перекатывается цифрами.
+    @State private var shown: Money?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -237,7 +239,15 @@ private struct HomeHero: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel(settings.hideAmounts ? Text("Показать суммы") : Text("Скрыть суммы"))
                 }
-                HeroAmount(money: balance)
+                HeroAmount(money: shown ?? balance)
+                    .onAppear {
+                        guard shown == nil, !reduceMotion else { return }
+                        shown = Money.zero(balance.currency)
+                        withAnimation(.smooth(duration: 1.1).delay(0.1)) { shown = balance }
+                    }
+                    .onChange(of: balance) { _, value in
+                        withAnimation(reduceMotion ? nil : .smooth(duration: 0.6)) { shown = value }
+                    }
                     .onTapGesture(count: 2) {
                         Haptics.soft()
                         withMonoAnimation(.quick) { settings.hideAmounts.toggle() }
@@ -316,8 +326,7 @@ private struct MonthLimitLine: View {
                     ProgressTrack(progress: status.progress, tint: status.state.tint, height: 4)
                 }
                 .padding(14)
-                .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.surface1))
-                .overlay(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).strokeBorder(Color.mono.strokeSubtle, lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color.mono.surface1))
                 .contentShape(Rectangle())
             }
             .buttonStyle(PressableStyle(scale: 0.98))
@@ -373,22 +382,29 @@ private struct HomeFeed: View {
                         MoneyText(money: group.spending.negated, token: .caption, color: Color.mono.textTertiary)
                     }
                 }
-                .padding(.top, 22)
-                .padding(.bottom, 2)
-                ForEach(group.items) { transaction in
-                    NavigationLink(value: Route.transaction(transaction.id)) {
-                        TransactionRow(
-                            transaction: transaction,
-                            category: transaction.categoryID.flatMap { store.categoryMap[$0] },
-                            account: store.accountMap[transaction.accountID],
-                            counterAccount: transaction.counterAccountID.flatMap { store.accountMap[$0] },
-                            calendar: store.periods.calendar
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .contextMenu { menu(for: transaction) }
-                    if transaction.id != group.items.last?.id {
-                        Hairline(inset: 52)
+                .padding(.top, 24)
+                .padding(.bottom, 10)
+                VStack(spacing: 6) {
+                    ForEach(group.items) { transaction in
+                        NavigationLink(value: Route.transaction(transaction.id)) {
+                            TransactionRow(
+                                transaction: transaction,
+                                category: transaction.categoryID.flatMap { store.categoryMap[$0] },
+                                account: store.accountMap[transaction.accountID],
+                                counterAccount: transaction.counterAccountID.flatMap { store.accountMap[$0] },
+                                calendar: store.periods.calendar
+                            )
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 2)
+                            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color.mono.surface1))
+                            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        }
+                        .buttonStyle(PressableStyle(scale: 0.975))
+                        .contextMenu { menu(for: transaction) }
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .top).combined(with: .opacity).combined(with: .scale(scale: 0.96, anchor: .top)),
+                            removal: .opacity.combined(with: .scale(scale: 0.94))
+                        ))
                     }
                 }
             }
@@ -412,6 +428,7 @@ private struct HomeFeed: View {
                 .padding(.top, 18)
             }
         }
+        .animation(.spring(response: 0.45, dampingFraction: 0.86), value: shown.map(\.id))
     }
 
     @ViewBuilder

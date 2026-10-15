@@ -1,5 +1,5 @@
 """Генерирует иконку MONO 1024×1024 (без прозрачности) в стиле «Graphite»:
-графитовый фон, акцентное ядро и радиальная шкала — тот же мотив, что у голосового прибора в приложении."""
+чёрный фон, белое ядро и радиальная шкала — тот же мотив, что у голосового прибора в приложении."""
 import math
 import sys
 import numpy as np
@@ -11,18 +11,18 @@ out = sys.argv[1] if len(sys.argv) > 1 else "AppIcon.png"
 
 # Фон: графит с холодным светом сверху.
 yy, xx = np.mgrid[0:S, 0:S].astype(np.float32)
-top = np.array([0x16, 0x1F, 0x2E], np.float32) / 255
-bottom = np.array([0x08, 0x0B, 0x12], np.float32) / 255
+top = np.array([0x1A, 0x1A, 0x1D], np.float32) / 255
+bottom = np.array([0x00, 0x00, 0x00], np.float32) / 255
 t = (yy / S)[..., None]
 bg = top * (1 - t) + bottom * t
 r = np.sqrt((xx - S * 0.3) ** 2 + (yy - 0) ** 2) / (S * 0.9)
-bg += (np.array([0x3D, 0x70, 0xE0], np.float32) / 255)[None, None, :] * (0.10 * np.clip(1 - r, 0, 1) ** 2)[..., None]
+bg += (np.array([0xFF, 0xFF, 0xFF], np.float32) / 255)[None, None, :] * (0.03 * np.clip(1 - r, 0, 1) ** 2)[..., None]
 base = Image.fromarray((np.clip(bg, 0, 1) * 255).astype(np.uint8), "RGB").resize((S * SS, S * SS), Image.BICUBIC)
 
 draw = ImageDraw.Draw(base, "RGBA")
 c = S * SS / 2
-accent = (0x3D, 0x70, 0xE0, 255)
-tick = (0x86, 0xA8, 0xF4)
+accent = (0xF4, 0xF4, 0xF6, 255)
+tick = (0xC7, 0xC7, 0xCC)
 
 # Радиальная шкала: 60 штрихов, каждый пятый длиннее и ярче; длина меняется плавно — «голос».
 count = 60
@@ -39,13 +39,13 @@ for i in range(count):
 
 # Кольцо-орбита.
 ring = 0.255 * S * SS
-draw.ellipse([c - ring, c - ring, c + ring, c + ring], outline=(0x3D, 0x70, 0xE0, 150), width=int(3 * SS))
+draw.ellipse([c - ring, c - ring, c + ring, c + ring], outline=(0xFF, 0xFF, 0xFF, 70), width=int(3 * SS))
 
 # Ядро: сплошной акцент и мягкий блик сверху.
 core = 0.215 * S * SS
 draw.ellipse([c - core, c - core, c + core, c + core], fill=accent)
 hl = Image.new("L", base.size, 0)
-ImageDraw.Draw(hl).ellipse([c - core * 0.9, c - core * 0.98, c + core * 0.9, c + core * 0.2], fill=26)
+ImageDraw.Draw(hl).ellipse([c - core * 0.9, c - core * 0.98, c + core * 0.9, c + core * 0.2], fill=0)
 hl = hl.filter(ImageFilter.GaussianBlur(40 * SS / 3))
 mask = Image.new("L", base.size, 0)
 ImageDraw.Draw(mask).ellipse([c - core, c - core, c + core, c + core], fill=255)

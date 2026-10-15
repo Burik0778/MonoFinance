@@ -370,7 +370,7 @@ struct VoiceDraftCard: View {
                 DatePicker("", selection: Binding(get: { draft.date }, set: { value in mutate { $0.date = value } }),
                            in: ...Date().addingTimeInterval(86_400), displayedComponents: [.date])
                     .labelsHidden()
-                    .tint(Color.mono.accent)
+                    .tint(Color.mono.positive)
             } note: { EmptyView() }
         }
     }

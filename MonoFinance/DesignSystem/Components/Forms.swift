@@ -125,7 +125,7 @@ struct ToggleRow: View {
     let title: LocalizedStringKey
     var subtitle: LocalizedStringKey?
     @Binding var isOn: Bool
-    var tint: Color = Color.mono.accent
+    var tint: Color = Color.mono.positive
 
     var body: some View {
         Toggle(isOn: $isOn) {

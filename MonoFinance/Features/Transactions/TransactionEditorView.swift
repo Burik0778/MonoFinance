@@ -349,7 +349,7 @@ struct TransactionEditorView: View {
                     .monoFont(.body)
                     .foregroundStyle(Color.mono.textSecondary)
             }
-            .tint(Color.mono.accent)
+            .tint(Color.mono.positive)
             .padding(.horizontal, 14)
             .frame(minHeight: 50)
             .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.surface3))

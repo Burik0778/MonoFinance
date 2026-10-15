@@ -22,7 +22,7 @@ struct SecuritySettingsView: View {
                     FormRow(icon: lockSymbol, tint: Color.mono.accent, title: "Блокировка приложения",
                             subtitle: Text(lock.canProtect ? "Face ID, Touch ID или код-пароль устройства" : "На устройстве не задан код-пароль"))
                 }
-                .tint(Color.mono.accent)
+                .tint(Color.mono.positive)
                 .disabled(working || !lock.canProtect)
                 if settings.appLockEnabled {
                     Picker(selection: $settings.lockTimeout) {
@@ -49,12 +49,12 @@ struct SecuritySettingsView: View {
                     FormRow(icon: "eye.slash.circle.fill", tint: Color.mono.accent, title: "Скрывать в переключателе",
                             subtitle: Text("Суммы не попадают в снимок экрана при сворачивании"))
                 }
-                .tint(Color.mono.accent)
+                .tint(Color.mono.positive)
                 Toggle(isOn: $settings.hideAmountsOnLaunch) {
                     FormRow(icon: "eye.trianglebadge.exclamationmark", tint: Color.mono.accent, title: "Скрывать суммы при запуске",
                             subtitle: Text("Показать — касанием глаза на главном экране"))
                 }
-                .tint(Color.mono.accent)
+                .tint(Color.mono.positive)
             } header: {
                 Kicker("Приватность")
             }
@@ -160,12 +160,12 @@ struct SpeechSettingsView: View {
                     FormRow(icon: "icloud.and.arrow.up", tint: Color.mono.textSecondary, title: "Разрешить серверы Apple",
                             subtitle: Text("Только если язык не распознаётся на устройстве. Аудио отправляется Apple для расшифровки; финансовые данные — нет."))
                 }
-                .tint(Color.mono.accent)
+                .tint(Color.mono.positive)
                 Toggle(isOn: $settings.autoStopOnSilence) {
                     FormRow(icon: "waveform.path.badge.minus", tint: Color.mono.accent, title: "Останавливать по паузе",
                             subtitle: Text("Запись завершится, когда вы замолчите"))
                 }
-                .tint(Color.mono.accent)
+                .tint(Color.mono.positive)
             } header: {
                 Kicker("Обработка")
             }
@@ -291,7 +291,7 @@ struct AISettingsView: View {
                     FormRow(icon: "server.rack", tint: Color.mono.accent, title: "Пояснения внешней модели",
                             subtitle: Text("Через ваш собственный сервер (HTTPS)"))
                 }
-                .tint(Color.mono.accent)
+                .tint(Color.mono.positive)
                 if settings.llmEnabled {
                     TextField("https://…", text: $settings.llmEndpoint)
                         .keyboardType(.URL)
@@ -320,7 +320,7 @@ struct AISettingsView: View {
                             .monoFont(.footnote)
                             .foregroundStyle(Color.mono.textSecondary)
                     }
-                    .tint(Color.mono.accent)
+                    .tint(Color.mono.positive)
                 }
             } header: {
                 Kicker("Внешняя модель")

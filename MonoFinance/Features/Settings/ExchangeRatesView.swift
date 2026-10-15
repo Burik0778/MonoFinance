@@ -55,7 +55,7 @@ struct ExchangeRatesView: View {
                     FormRow(icon: "building.columns", tint: Color.mono.positive, title: "Курсы ЦБ РУз",
                             subtitle: Text("Обновляются автоматически при открытии приложения"))
                 }
-                .tint(Color.mono.accent)
+                .tint(Color.mono.positive)
                 Button {
                     Task { await refresh() }
                 } label: {

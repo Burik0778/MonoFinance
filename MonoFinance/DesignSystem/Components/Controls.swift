@@ -2,13 +2,13 @@ import SwiftUI
 import UIKit
 import MonoCore
 
-/// Значок категории: монохромная плитка. Цвет в списках не используется — различие даёт форма значка.
-/// `tinted` показывает приглушённый тон категории (экран категорий, редакторы); `isSelected` — акцентная заливка выбора.
+/// Значок категории: цветной символ на плитке того же цвета (15 %). Для операций без категории — серый.
+/// `isSelected` — белая заливка выбора.
 struct CategoryGlyph: View {
     let icon: String
     let color: Color
     var size: CGFloat = 40
-    var tinted = false
+    var tinted = true
     var isSelected = false
 
     var body: some View {
@@ -18,18 +18,18 @@ struct CategoryGlyph: View {
             .symbolRenderingMode(.monochrome)
             .foregroundStyle(isSelected ? Color.mono.onAccent : (tinted ? color : Color.mono.textSecondary))
             .frame(width: size, height: size)
-            .background(shape.fill(isSelected ? Color.mono.accent : (tinted ? color.opacity(0.14) : Color.mono.surface2)))
-            .overlay(shape.strokeBorder(isSelected ? Color.clear : Color.mono.strokeSubtle, lineWidth: 1))
+            .background(shape.fill(isSelected ? Color.mono.accent : (tinted ? color.opacity(0.15) : Color.mono.surface2)))
             .accessibilityHidden(true)
     }
 }
 
 extension CategoryGlyph {
-    init(category: FinanceCategory?, kind: TransactionKind, size: CGFloat = 40, tinted: Bool = false) {
+    init(category: FinanceCategory?, kind: TransactionKind, size: CGFloat = 40, tinted: Bool = true) {
         if let category {
             self.init(icon: category.icon, color: category.color.color, size: size, tinted: tinted)
         } else {
-            self.init(icon: kind.symbol, color: kind.tint, size: size, tinted: tinted)
+            // Перевод, комиссия, корректировка — нейтральный серый значок.
+            self.init(icon: kind.symbol, color: Color.mono.textSecondary, size: size, tinted: false)
         }
     }
 }
@@ -58,13 +58,11 @@ struct SegmentedPills<Value: Hashable>: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .frame(maxWidth: stretch ? .infinity : nil)
-                        .foregroundStyle(selected ? Color.mono.textPrimary : Color.mono.textTertiary)
+                        .foregroundStyle(selected ? Color.mono.background : Color.mono.textSecondary)
                         .background {
                             if selected {
                                 Capsule(style: .continuous)
-                                    .fill(Color.mono.surface3)
-                                    .overlay(Capsule(style: .continuous).strokeBorder(Color.mono.strokeStrong, lineWidth: 1))
-                                    .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 2)
+                                    .fill(Color.mono.textPrimary)
                                     .matchedGeometryEffect(id: "pill", in: namespace)
                             }
                         }
@@ -76,7 +74,6 @@ struct SegmentedPills<Value: Hashable>: View {
         }
         .padding(4)
         .background(Capsule(style: .continuous).fill(Color.mono.surface1))
-        .overlay(Capsule(style: .continuous).strokeBorder(Color.mono.strokeSubtle, lineWidth: 1))
     }
 }
 
@@ -208,7 +205,7 @@ struct FormRow<Trailing: View>: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            CategoryGlyph(icon: icon, color: tint, size: 32)
+            CategoryGlyph(icon: icon, color: tint, size: 32, tinted: false)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .monoFont(.body)

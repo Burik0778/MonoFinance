@@ -293,11 +293,11 @@ struct CategoryDonutCard: View {
         return category.name
     }
 
-    /// Цвет сектора — ступень акцента по рангу: крупнейшая категория ярче, «Остальное» нейтрально.
+    /// Цвет сектора — цвет категории, как у её значка; «Остальное» и «Без категории» — серые.
     private func color(of slice: Slice) -> Color {
         if slice.isOther { return Color.mono.neutral }
-        guard let index = slices.firstIndex(where: { $0.id == slice.id }) else { return Color.mono.neutral }
-        return Color.mono.chart(index)
+        guard let id = slice.categoryID, let category = store.categoryMap[id] else { return Color.mono.neutral }
+        return category.color.color
     }
 
     /// `chartAngleSelection` отдаёт накопленное значение — находим сектор, в который оно попало.

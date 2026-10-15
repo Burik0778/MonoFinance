@@ -15,6 +15,8 @@ struct VoiceCaptureView: View {
     @State private var model = VoiceInputModel()
     @State private var typing = false
     @State private var saveError: String?
+    @State private var orbAppeared = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var typedFocused: Bool
 
     var body: some View {
@@ -92,6 +94,12 @@ struct VoiceCaptureView: View {
                 } label: {
                     VoiceOrb(level: model.level, isActive: model.phase == .listening, levels: model.levels)
                         .frame(width: 270, height: 270)
+                        .scaleEffect(orbAppeared || reduceMotion ? 1 : 0.55)
+                        .opacity(orbAppeared || reduceMotion ? 1 : 0)
+                        .rotationEffect(.degrees(orbAppeared || reduceMotion ? 0 : -40))
+                        .onAppear {
+                            withAnimation(.spring(response: 0.6, dampingFraction: 0.78)) { orbAppeared = true }
+                        }
                         .overlay {
                             Image(systemName: model.phase == .listening ? "stop.fill" : "mic.fill")
                                 .font(.system(size: 26, weight: .semibold))

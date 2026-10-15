@@ -62,7 +62,7 @@ struct TransactionsView: View {
                             Button { router.present(.transaction(TransactionEditorContext(existingID: transaction.id, kind: transaction.kind))) } label: {
                                 Label("Изменить", systemImage: "pencil")
                             }
-                            .tint(Color.mono.accent)
+                            .tint(Color(white: 0.32))
                         }
                         .swipeActions(edge: .leading) {
                             Button {
@@ -168,7 +168,7 @@ struct TransactionsView: View {
                 Chart(days) { point in
                     BarMark(x: .value("День", point.date, unit: .day), y: .value("Расход", point.outflow.chartValue), width: .ratio(0.6))
                         .clipShape(RoundedRectangle(cornerRadius: 1.5, style: .continuous))
-                        .foregroundStyle(store.periods.calendar.isDate(point.date, inSameDayAs: today) ? Color.mono.accentText : Color.mono.accent.opacity(0.75))
+                        .foregroundStyle(store.periods.calendar.isDate(point.date, inSameDayAs: today) ? Color.mono.textPrimary : Color.mono.textTertiary)
                 }
                 // Корневая шкала: один крупный платёж (аренда) не «съедает» остальные дни.
                 .chartYScale(type: .squareRoot)

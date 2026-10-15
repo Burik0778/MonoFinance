@@ -94,7 +94,7 @@ struct ImportFlowView: View {
                 } label: {
                     VStack(spacing: 12) {
                         if model.isWorking {
-                            ProgressView().controlSize(.large).tint(Color.mono.accent)
+                            ProgressView().controlSize(.large).tint(Color.mono.positive)
                             Text("Читаю файл…")
                                 .monoFont(.callout)
                                 .foregroundStyle(Color.mono.textSecondary)

@@ -61,7 +61,7 @@ struct BudgetEditorView: View {
                 }
             }
 
-            ToggleRow(title: "Переносить остаток", subtitle: "Неистраченное в этом месяце добавится к лимиту следующего.", isOn: $rollover, tint: Color.mono.accent)
+            ToggleRow(title: "Переносить остаток", subtitle: "Неистраченное в этом месяце добавится к лимиту следующего.", isOn: $rollover, tint: Color.mono.positive)
 
             if !isNew {
                 Button("Удалить бюджет", role: .destructive) { confirmsDelete = true }

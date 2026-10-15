@@ -79,25 +79,25 @@ extension ShapeStyle where Self == Color {
     static var monoTertiary: Color { Color.mono.textTertiary }
 }
 
-/// Цвет категории — приглушённый тон. Показывается только там, где пользователь выбирает или узнаёт категорию
-/// (редактор, список категорий, цели). В списках операций значки монохромные.
+/// Цвет категории — единственный «живой» цвет в интерфейсе: значок категории окрашен, плитка под ним — тот же цвет
+/// на 15 % поверх чёрного. Всё остальное — чёрное, белое и серое.
 extension CategoryColor {
     var color: Color { tone.color }
 
     var tone: DynamicColor {
         switch self {
-        case .electric: return DynamicColor(dark: RGBA(134, 165, 232, 1), light: RGBA(46, 86, 180, 1))
-        case .violet: return DynamicColor(dark: RGBA(160, 150, 214, 1), light: RGBA(92, 78, 160, 1))
-        case .cyan: return DynamicColor(dark: RGBA(128, 178, 196, 1), light: RGBA(36, 110, 132, 1))
-        case .emerald: return DynamicColor(dark: RGBA(112, 182, 156, 1), light: RGBA(24, 116, 84, 1))
-        case .coral: return DynamicColor(dark: RGBA(214, 150, 142, 1), light: RGBA(160, 68, 60, 1))
-        case .magenta: return DynamicColor(dark: RGBA(192, 150, 196, 1), light: RGBA(128, 70, 132, 1))
-        case .indigo: return DynamicColor(dark: RGBA(146, 154, 216, 1), light: RGBA(70, 80, 160, 1))
-        case .sky: return DynamicColor(dark: RGBA(138, 172, 210, 1), light: RGBA(44, 100, 156, 1))
-        case .mint: return DynamicColor(dark: RGBA(134, 192, 174, 1), light: RGBA(30, 120, 98, 1))
-        case .tangerine: return DynamicColor(dark: RGBA(208, 170, 128, 1), light: RGBA(140, 92, 36, 1))
-        case .rose: return DynamicColor(dark: RGBA(206, 152, 170, 1), light: RGBA(150, 64, 96, 1))
-        case .steel: return DynamicColor(dark: RGBA(150, 162, 182, 1), light: RGBA(86, 98, 120, 1))
+        case .electric: return DynamicColor(dark: RGBA(92, 140, 255, 1), light: RGBA(36, 92, 214, 1))
+        case .violet: return DynamicColor(dark: RGBA(167, 139, 250, 1), light: RGBA(109, 74, 214, 1))
+        case .cyan: return DynamicColor(dark: RGBA(76, 201, 240, 1), light: RGBA(8, 130, 168, 1))
+        case .emerald: return DynamicColor(dark: RGBA(52, 199, 123, 1), light: RGBA(20, 134, 79, 1))
+        case .coral: return DynamicColor(dark: RGBA(255, 107, 107, 1), light: RGBA(201, 48, 44, 1))
+        case .magenta: return DynamicColor(dark: RGBA(232, 121, 249, 1), light: RGBA(160, 52, 180, 1))
+        case .indigo: return DynamicColor(dark: RGBA(129, 140, 248, 1), light: RGBA(72, 80, 200, 1))
+        case .sky: return DynamicColor(dark: RGBA(96, 165, 250, 1), light: RGBA(30, 110, 200, 1))
+        case .mint: return DynamicColor(dark: RGBA(45, 212, 191, 1), light: RGBA(13, 140, 124, 1))
+        case .tangerine: return DynamicColor(dark: RGBA(251, 146, 60, 1), light: RGBA(190, 90, 10, 1))
+        case .rose: return DynamicColor(dark: RGBA(251, 113, 133, 1), light: RGBA(190, 40, 80, 1))
+        case .steel: return DynamicColor(dark: RGBA(148, 163, 184, 1), light: RGBA(80, 96, 120, 1))
         }
     }
 }

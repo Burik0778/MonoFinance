@@ -233,11 +233,11 @@ struct OnboardingView: View {
                                 .foregroundStyle(Color.mono.textSecondary)
                         }
                     }
-                    .tint(Color.mono.accent)
+                    .tint(Color.mono.positive)
                     .padding(14)
                     .background(RoundedRectangle(cornerRadius: MonoTokens.Radius.md, style: .continuous).fill(Color.mono.surface1))
                 }
-                ToggleRow(title: "Скрывать суммы при запуске", subtitle: "Удобно, если показываете экран другим", isOn: Binding(get: { settings.hideAmountsOnLaunch }, set: { settings.hideAmountsOnLaunch = $0 }), tint: Color.mono.accent)
+                ToggleRow(title: "Скрывать суммы при запуске", subtitle: "Удобно, если показываете экран другим", isOn: Binding(get: { settings.hideAmountsOnLaunch }, set: { settings.hideAmountsOnLaunch = $0 }), tint: Color.mono.positive)
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: "mic.fill")
                         .foregroundStyle(Color.mono.accentText)
