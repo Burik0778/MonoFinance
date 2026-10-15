@@ -2,7 +2,13 @@
 
 Личные финансы на iPhone: счета в банках и наличные, расходы, доходы и переводы, голосовой ввод, аналитика, бюджеты и цели. Нативное приложение на Swift и SwiftUI для iOS 18 и новее, интерфейс на русском. Данные хранятся только на телефоне: без аккаунтов, облака и банковских паролей.
 
-![Экраны MONO](docs/screens.jpg)
+<table>
+<tr><td align="center"><img src="docs/screens/01-glavnaya.jpg" width="240" alt="Главная"><br><sub>Главная</sub></td><td align="center"><img src="docs/screens/02-vybor-scheta.jpg" width="240" alt="Выбор счёта"><br><sub>Выбор счёта</sub></td><td align="center"><img src="docs/screens/03-glavnaya-odnoy-karty.jpg" width="240" alt="Главная одной карты"><br><sub>Главная одной карты</sub></td></tr>
+<tr><td align="center"><img src="docs/screens/04-golos.jpg" width="240" alt="Голосовой ввод"><br><sub>Голосовой ввод</sub></td><td align="center"><img src="docs/screens/05-golos-chernoviki.jpg" width="240" alt="Проверка черновиков"><br><sub>Проверка черновиков</sub></td><td align="center"><img src="docs/screens/06-istoriya.jpg" width="240" alt="История операций"><br><sub>История операций</sub></td></tr>
+<tr><td align="center"><img src="docs/screens/07-operaciya.jpg" width="240" alt="Операция"><br><sub>Операция</sub></td><td align="center"><img src="docs/screens/08-novaya-operaciya.jpg" width="240" alt="Новая операция"><br><sub>Новая операция</sub></td><td align="center"><img src="docs/screens/09-statistika.jpg" width="240" alt="Статистика"><br><sub>Статистика</sub></td></tr>
+<tr><td align="center"><img src="docs/screens/10-plany.jpg" width="240" alt="Планы"><br><sub>Планы</sub></td><td align="center"><img src="docs/screens/11-karty.jpg" width="240" alt="Карты"><br><sub>Карты</sub></td><td align="center"><img src="docs/screens/12-schet.jpg" width="240" alt="Счёт"><br><sub>Счёт</sub></td></tr>
+<tr><td align="center"><img src="docs/screens/13-nastroyki.jpg" width="240" alt="Настройки"><br><sub>Настройки</sub></td><td align="center"><img src="docs/screens/14-znakomstvo.jpg" width="240" alt="Знакомство"><br><sub>Знакомство</sub></td><td align="center"><img src="docs/screens/15-svetlaya-tema.jpg" width="240" alt="Светлая тема"><br><sub>Светлая тема</sub></td></tr>
+</table>
 
 Снимки сделаны в iOS-симуляторе в демо-режиме (сборка CI из этой ветки): данные выдуманы, и приложение показывает это плашкой «Демо-режим · данные не настоящие».
 
