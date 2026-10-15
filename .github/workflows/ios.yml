@@ -135,6 +135,9 @@ jobs:
           xcrun simctl ui "$UDID" appearance dark || true
           xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true
           xcrun simctl install "$UDID" "$APP"
+          # Первый запуск после установки медленнее — прогреваем приложение, чтобы первый снимок не был пустым.
+          xcrun simctl launch "$UDID" uz.mono.finance -AppleLanguages "(ru)" -AppleLocale ru_RU -monoScreenshots || true
+          sleep 15
           mkdir -p shots
           shoot() {
             name=$1; shift
