@@ -18,17 +18,42 @@ public struct LLMProvider: Identifiable, Codable, Hashable, Sendable {
         self.isEnabled = isEnabled
     }
 
-    public static let groq = LLMProvider(id: "groq", name: "Groq", baseURL: "https://api.groq.com/openai/v1", model: "llama-3.3-70b-versatile")
-    public static let cerebras = LLMProvider(id: "cerebras", name: "Cerebras", baseURL: "https://api.cerebras.ai/v1", model: "llama-3.3-70b")
+    // Модели по умолчанию — актуальные на октябрь 2026: llama-3.3-70b у Groq и Cerebras и gemini-2.5-flash отключены.
+    // Если сервис снова уберёт модель, её можно выбрать из списка («Выбрать модель» загружает GET /models).
+    public static let groq = LLMProvider(id: "groq", name: "Groq", baseURL: "https://api.groq.com/openai/v1", model: "openai/gpt-oss-120b")
+    public static let cerebras = LLMProvider(id: "cerebras", name: "Cerebras", baseURL: "https://api.cerebras.ai/v1", model: "gpt-oss-120b")
     public static let openRouter = LLMProvider(id: "openrouter", name: "OpenRouter", baseURL: "https://openrouter.ai/api/v1",
                                                model: "meta-llama/llama-3.3-70b-instruct:free")
     public static let gemini = LLMProvider(id: "gemini", name: "Gemini", baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
-                                           model: "gemini-2.5-flash")
+                                           model: "gemini-flash-latest")
 
     /// Готовые сервисы в порядке по умолчанию.
     public static let presets: [LLMProvider] = [groq, cerebras, openRouter, gemini]
 
     public var isBuiltIn: Bool { Self.presets.contains { $0.id == id } }
+
+    /// Модели, которые сервисы отключили: у готовых сервисов они заменяются моделью по умолчанию.
+    public static let retiredModels: [String: Set<String>] = [
+        "groq": ["llama-3.3-70b-versatile", "llama3-70b-8192"],
+        "cerebras": ["llama-3.3-70b", "llama3.1-8b", "llama3.1-70b"],
+        "gemini": ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+    ]
+
+    /// Заменяет отключённые модели готовых сервисов на актуальные (свои сервисы и прочие правки не трогает).
+    public static func upgradingRetiredModels(_ providers: [LLMProvider]) -> [LLMProvider] {
+        providers.map { provider in
+            guard let preset = provider.preset, retiredModels[provider.id]?.contains(provider.model) == true else { return provider }
+            var copy = provider
+            copy.model = preset.model
+            return copy
+        }
+    }
+
+    /// Адрес списка моделей сервиса (`GET {baseURL}/models`).
+    public var modelsURL: URL? {
+        guard let chat = chatURL else { return nil }
+        return chat.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("models")
+    }
 
     /// Готовый сервис в исходном виде (для «Сбросить»).
     public var preset: LLMProvider? { Self.presets.first { $0.id == id } }
@@ -107,7 +132,7 @@ public struct LLMChatRequest: Encodable, Equatable, Sendable {
         case maxTokens = "max_tokens"
     }
 
-    public init(model: String, messages: [LLMMessage], temperature: Double = 0.3, maxTokens: Int = 800) {
+    public init(model: String, messages: [LLMMessage], temperature: Double = 0.3, maxTokens: Int = 2_000) {
         self.model = model
         self.messages = messages
         self.temperature = temperature
@@ -126,23 +151,33 @@ public enum LLMError: Error, Equatable, Sendable {
     case badResponse
     case insecureURL
     case notConfigured
+    /// Сервис ответил ошибкой с пояснением (например, «модель не найдена»).
+    case service(status: Int, detail: String)
 
-    /// Код ответа HTTP → ошибка; `nil` для успешных кодов.
-    public static func from(status: Int) -> LLMError? {
+    /// Код ответа HTTP (и тело с пояснением) → ошибка; `nil` для успешных кодов.
+    public static func from(status: Int, body: Data? = nil) -> LLMError? {
         switch status {
         case 200..<300: return nil
         case 401, 403: return .invalidKey
         case 429: return .rateLimited
         case 500..<600: return .serverUnavailable(status)
-        default: return .badResponse
+        default:
+            let detail = body.flatMap(LLMResponseParser.errorMessage(from:)) ?? ""
+            return .service(status: status, detail: detail)
         }
+    }
+
+    /// Похоже на «такой модели нет»: стоит выбрать модель из списка.
+    public var isModelProblem: Bool {
+        guard case .service(let status, let detail) = self else { return false }
+        return status == 404 || detail.lowercased().contains("model")
     }
 
     /// Пробовать ли следующий сервис: сеть, таймаут, лимит запросов, ошибка сервера.
     public var allowsFallback: Bool {
         switch self {
         case .noNetwork, .timeout, .rateLimited, .serverUnavailable: return true
-        case .invalidKey, .badResponse, .insecureURL, .notConfigured: return false
+        case .invalidKey, .badResponse, .insecureURL, .notConfigured, .service: return false
         }
     }
 
@@ -156,6 +191,11 @@ public enum LLMError: Error, Equatable, Sendable {
         case .badResponse: return "Нейросеть вернула непонятный ответ. Проверьте адрес и модель."
         case .insecureURL: return "Адрес сервиса должен начинаться с https://"
         case .notConfigured: return "Нет сервиса с ключом. Добавьте ключ в настройках → Нейросеть."
+        case .service(let status, let detail):
+            var text = "Сервис ответил ошибкой \(status)"
+            if !detail.isEmpty { text += ": \(detail)" }
+            if isModelProblem { text += ". Похоже, модели нет — нажмите «Выбрать модель» в настройках сервиса." }
+            return text
         }
     }
 }
@@ -179,9 +219,72 @@ public enum LLMResponseParser {
               let content = choice.message?.content ?? choice.text else {
             throw LLMError.badResponse
         }
-        let text = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = stripThinking(content).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { throw LLMError.badResponse }
         return text
+    }
+
+    /// Ответ похож на `chat/completions`: есть `choices`. Для «Проверить»: «думающая» модель на коротком
+    /// запросе может не успеть написать текст, но сервис, ключ и модель при этом работают.
+    public static func isCompletion(_ data: Data) -> Bool {
+        guard let response = try? JSONDecoder().decode(Response.self, from: data), let choices = response.choices else { return false }
+        return !choices.isEmpty
+    }
+
+    /// Рассуждения моделей вида `<think>…</think>` пользователю не показываем.
+    static func stripThinking(_ text: String) -> String {
+        var result = text
+        while let open = result.range(of: "<think>"), let close = result.range(of: "</think>", range: open.upperBound..<result.endIndex) {
+            result.removeSubrange(open.lowerBound..<close.upperBound)
+        }
+        return result
+    }
+
+    struct ErrorBody: Decodable {
+        struct Detail: Decodable {
+            let message: String?
+        }
+        let error: Detail?
+        let message: String?
+    }
+
+    /// Пояснение из тела ошибки: `{"error":{"message":…}}`, `[{"error":…}]`, `{"message":…}`.
+    /// Длинные «слова» (похожие на ключи и токены) скрываются, текст укорачивается.
+    public static func errorMessage(from data: Data) -> String? {
+        let decoder = JSONDecoder()
+        let raw: String?
+        if let body = try? decoder.decode(ErrorBody.self, from: data) {
+            raw = body.error?.message ?? body.message
+        } else if let list = try? decoder.decode([ErrorBody].self, from: data) {
+            raw = list.first.flatMap { $0.error?.message ?? $0.message }
+        } else {
+            raw = nil
+        }
+        guard let raw, !raw.isEmpty else { return nil }
+        let words = raw.split(separator: " ", omittingEmptySubsequences: true).map { word -> String in
+            let token = word.filter { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "-" }
+            return token.count >= 24 ? "…" : String(word)
+        }
+        let text = words.joined(separator: " ")
+        return text.count > 220 ? String(text.prefix(220)) + "…" : text
+    }
+
+    struct ModelList: Decodable {
+        struct Model: Decodable {
+            let id: String
+        }
+        let data: [Model]?
+        let models: [Model]?
+    }
+
+    /// Идентификаторы моделей из ответа `GET /models` (префикс «models/» у Gemini убирается).
+    public static func modelIDs(from data: Data) -> [String] {
+        guard let list = try? JSONDecoder().decode(ModelList.self, from: data) else { return [] }
+        let ids = (list.data ?? list.models ?? []).map { id -> String in
+            id.id.hasPrefix("models/") ? String(id.id.dropFirst("models/".count)) : id.id
+        }
+        var seen = Set<String>()
+        return ids.filter { !$0.isEmpty && seen.insert($0).inserted }.sorted()
     }
 }
 

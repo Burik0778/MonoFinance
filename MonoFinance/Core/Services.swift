@@ -139,18 +139,32 @@ struct LLMClient {
     }
 
     /// Один запрос к одному сервису.
-    func complete(provider: LLMProvider, key: String, messages: [LLMMessage], maxTokens: Int = 800) async throws -> String {
-        guard let url = provider.chatURL else { throw LLMError.insecureURL }
+    func complete(provider: LLMProvider, key: String, messages: [LLMMessage], maxTokens: Int = 2_000) async throws -> String {
+        let data = try await post(provider: provider, key: key, messages: messages, maxTokens: maxTokens)
+        return try LLMResponseParser.text(from: data)
+    }
+
+    private func authorizedRequest(_ url: URL, provider: LLMProvider, key: String) -> URLRequest {
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: Self.timeout)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         for (field, value) in provider.extraHeaders {
             request.setValue(value, forHTTPHeaderField: field)
         }
-        request.httpBody = try JSONEncoder().encode(LLMChatRequest(model: provider.model, messages: messages, maxTokens: maxTokens))
+        return request
+    }
 
+    private func post(provider: LLMProvider, key: String, messages: [LLMMessage], maxTokens: Int) async throws -> Data {
+        guard let url = provider.chatURL else { throw LLMError.insecureURL }
+        var request = authorizedRequest(url, provider: provider, key: key)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(LLMChatRequest(model: provider.model, messages: messages, maxTokens: maxTokens))
+        return try await send(request)
+    }
+
+    /// Запрос с разбором ошибок: сеть, таймаут, код ответа и пояснение сервиса (без ключей).
+    private func send(_ request: URLRequest) async throws -> Data {
         let data: Data
         let response: URLResponse
         do {
@@ -164,8 +178,18 @@ struct LLMClient {
             throw LLMError.noNetwork
         }
         guard let http = response as? HTTPURLResponse else { throw LLMError.badResponse }
-        if let error = LLMError.from(status: http.statusCode) { throw error }
-        return try LLMResponseParser.text(from: data)
+        if let error = LLMError.from(status: http.statusCode, body: data) { throw error }
+        return data
+    }
+
+    /// Модели, доступные по ключу: `GET {baseURL}/models`.
+    func models(provider: LLMProvider, key: String) async throws -> [String] {
+        guard let url = provider.modelsURL else { throw LLMError.insecureURL }
+        var request = authorizedRequest(url, provider: provider, key: key)
+        request.httpMethod = "GET"
+        let ids = LLMResponseParser.modelIDs(from: try await send(request))
+        guard !ids.isEmpty else { throw LLMError.badResponse }
+        return ids
     }
 
     /// Вопрос с перебором: если активный сервис не ответил (сеть, 429, 5xx) — следующий с ключом.
@@ -182,6 +206,9 @@ struct LLMClient {
             LLMMessage(role: .system, content: "Это проверка подключения. Ответь одним словом."),
             LLMMessage(role: .user, content: "Скажи «готово».")
         ]
-        return try await complete(provider: provider, key: key, messages: messages, maxTokens: 16)
+        // «Думающая» модель на коротком запросе может не успеть написать текст — достаточно корректного ответа.
+        let data = try await post(provider: provider, key: key, messages: messages, maxTokens: 256)
+        guard LLMResponseParser.isCompletion(data) else { throw LLMError.badResponse }
+        return (try? LLMResponseParser.text(from: data)) ?? ""
     }
 }

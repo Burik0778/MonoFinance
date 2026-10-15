@@ -95,7 +95,7 @@ final class SettingsStore {
         remindersEnabled = defaults.bool(forKey: SettingsKeys.remindersEnabled)
         llmEnabled = defaults.bool(forKey: SettingsKeys.llmEnabled)
         let savedProviders = defaults.data(forKey: SettingsKeys.llmProviders).flatMap { try? JSONDecoder().decode([LLMProvider].self, from: $0) }
-        llmProviders = LLMProvider.mergingPresets(into: savedProviders ?? [])
+        llmProviders = LLMProvider.upgradingRetiredModels(LLMProvider.mergingPresets(into: savedProviders ?? []))
         llmActiveProviderID = defaults.string(forKey: SettingsKeys.llmActiveProvider) ?? LLMProvider.groq.id
         llmConsent = defaults.bool(forKey: SettingsKeys.llmConsent)
         demoMode = defaults.bool(forKey: SettingsKeys.demoMode)

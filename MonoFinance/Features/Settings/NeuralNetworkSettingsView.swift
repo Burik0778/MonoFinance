@@ -160,6 +160,9 @@ struct LLMProviderEditorView: View {
     @State private var checking = false
     @State private var checkResult: CheckResult?
     @State private var confirmDelete = false
+    @State private var availableModels: [String]?
+    @State private var loadingModels = false
+    @State private var modelsError: String?
 
     enum CheckResult: Equatable {
         case success(String)
@@ -192,6 +195,24 @@ struct LLMProviderEditorView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .monoFont(.body)
+                Button {
+                    Task { await loadModels() }
+                } label: {
+                    HStack(spacing: 8) {
+                        if loadingModels {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "list.bullet")
+                        }
+                        Text("Выбрать модель")
+                    }
+                }
+                .disabled(loadingModels || draft.modelsURL == nil || effectiveKey == nil)
+                if let modelsError {
+                    Text(verbatim: modelsError)
+                        .monoFont(.caption)
+                        .foregroundStyle(Color.mono.negative)
+                }
                 Toggle("Включён", isOn: $draft.isEnabled)
                     .tint(Color.mono.positive)
                 if let error = draft.validationError, !draft.baseURL.isEmpty {
@@ -310,6 +331,15 @@ struct LLMProviderEditorView: View {
                 .disabled(draft.validationError != nil)
             }
         }
+        .sheet(isPresented: Binding(get: { availableModels != nil }, set: { if !$0 { availableModels = nil } })) {
+            NavigationStack {
+                LLMModelPickerView(models: availableModels ?? [], current: draft.model) { model in
+                    draft.model = model
+                    checkResult = nil
+                    availableModels = nil
+                }
+            }
+        }
         .confirmationDialog("Удалить сервис «\(draft.name)»?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Удалить", role: .destructive) { delete() }
         }
@@ -324,6 +354,21 @@ struct LLMProviderEditorView: View {
         case LLMProvider.gemini.id: return URL(string: "https://aistudio.google.com/apikey")
         default: return nil
         }
+    }
+
+    /// Список моделей сервиса по ключу (введённому сейчас или сохранённому).
+    private func loadModels() async {
+        guard let key = effectiveKey else { return }
+        loadingModels = true
+        modelsError = nil
+        do {
+            availableModels = try await LLMClient().models(provider: draft, key: key)
+        } catch let error as LLMError {
+            modelsError = error.message
+        } catch {
+            modelsError = nil
+        }
+        loadingModels = false
     }
 
     private func check() async {
@@ -374,6 +419,59 @@ struct LLMProviderEditorView: View {
     private func touchProviders() {
         let providers = settings.llmProviders
         settings.llmProviders = providers
+    }
+}
+
+// MARK: - Выбор модели
+
+/// Модели, которые сервис отдаёт по ключу. Бесплатные (OpenRouter, «:free») — первыми.
+struct LLMModelPickerView: View {
+    let models: [String]
+    let current: String
+    let onPick: (String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+
+    private var filtered: [String] {
+        let free = models.filter { $0.hasSuffix(":free") }
+        let rest = models.filter { !$0.hasSuffix(":free") }
+        let ordered = free + rest
+        let trimmed = query.trimmingCharacters(in: .whitespaces).lowercased()
+        return trimmed.isEmpty ? ordered : ordered.filter { $0.lowercased().contains(trimmed) }
+    }
+
+    var body: some View {
+        List(filtered, id: \.self) { model in
+            Button {
+                onPick(model)
+                dismiss()
+            } label: {
+                HStack {
+                    Text(verbatim: model)
+                        .monoFont(.body)
+                        .foregroundStyle(Color.mono.textPrimary)
+                        .lineLimit(2)
+                    Spacer(minLength: 8)
+                    if model == current {
+                        Image(systemName: "checkmark")
+                            .foregroundStyle(Color.mono.accent)
+                    }
+                }
+            }
+            .listRowBackground(Color.mono.surface1)
+        }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(MonoBackdrop())
+        .searchable(text: $query, prompt: Text("Поиск модели"))
+        .navigationTitle(Text("Модели сервиса"))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Отмена") { dismiss() }
+            }
+        }
     }
 }
 

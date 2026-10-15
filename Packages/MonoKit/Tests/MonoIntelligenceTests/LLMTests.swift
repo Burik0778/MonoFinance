@@ -196,3 +196,53 @@ final class LLMFallbackTests: XCTestCase {
         XCTAssertEqual(error, .notConfigured)
     }
 }
+
+final class LLMServiceErrorsTests: XCTestCase {
+    func testModelNotFoundExplained() {
+        let body = Data(#"{"error":{"message":"Model llama-3.3-70b does not exist or you do not have access to it.","type":"not_found_error"}}"#.utf8)
+        let error = LLMError.from(status: 404, body: body)
+        XCTAssertEqual(error, .service(status: 404, detail: "Model llama-3.3-70b does not exist or you do not have access to it."))
+        XCTAssertTrue(error?.isModelProblem == true)
+        XCTAssertTrue(error?.message.contains("Выбрать модель") == true)
+        XCTAssertFalse(error?.allowsFallback == true)
+    }
+
+    func testErrorMessageHidesKeys() {
+        let body = Data(#"[{"error":{"code":400,"message":"API key not valid: AIzaSyD-1234567890abcdefghijklmnop please pass a valid key"}}]"#.utf8)
+        let message = LLMResponseParser.errorMessage(from: body)
+        XCTAssertNotNil(message)
+        XCTAssertFalse(message!.contains("AIzaSyD-1234567890abcdefghijklmnop"))
+        XCTAssertTrue(message!.contains("API key not valid"))
+    }
+
+    func testCompletionWithEmptyContentPassesCheck() {
+        let data = Data(#"{"choices":[{"index":0,"finish_reason":"length","message":{"role":"assistant","content":"","reasoning":"thinking…"}}]}"#.utf8)
+        XCTAssertTrue(LLMResponseParser.isCompletion(data))
+        XCTAssertThrowsError(try LLMResponseParser.text(from: data))
+        XCTAssertFalse(LLMResponseParser.isCompletion(Data(#"{"error":{"message":"x"}}"#.utf8)))
+    }
+
+    func testThinkingIsStripped() throws {
+        let data = Data(#"{"choices":[{"message":{"content":"<think>считаю…</think>Больше всего — кафе."}}]}"#.utf8)
+        XCTAssertEqual(try LLMResponseParser.text(from: data), "Больше всего — кафе.")
+    }
+
+    func testModelList() {
+        let data = Data(#"{"object":"list","data":[{"id":"qwen-3.8-27b"},{"id":"gpt-oss-120b"},{"id":"models/gemini-flash-latest"},{"id":"gpt-oss-120b"}]}"#.utf8)
+        XCTAssertEqual(LLMResponseParser.modelIDs(from: data), ["gemini-flash-latest", "gpt-oss-120b", "qwen-3.8-27b"])
+        XCTAssertEqual(LLMProvider.cerebras.modelsURL?.absoluteString, "https://api.cerebras.ai/v1/models")
+        XCTAssertEqual(LLMProvider.gemini.modelsURL?.absoluteString, "https://generativelanguage.googleapis.com/v1beta/openai/models")
+    }
+
+    func testRetiredModelsAreUpgraded() {
+        var cerebras = LLMProvider.cerebras
+        cerebras.model = "llama-3.3-70b"
+        var groq = LLMProvider.groq
+        groq.model = "llama-3.1-8b-instant"
+        let custom = LLMProvider(name: "Свой", baseURL: "https://example.com/v1", model: "llama-3.3-70b")
+        let upgraded = LLMProvider.upgradingRetiredModels([cerebras, groq, custom])
+        XCTAssertEqual(upgraded[0].model, LLMProvider.cerebras.model)
+        XCTAssertEqual(upgraded[1].model, "llama-3.1-8b-instant", "выбранная пользователем рабочая модель не трогается")
+        XCTAssertEqual(upgraded[2].model, "llama-3.3-70b", "свои сервисы не трогаются")
+    }
+}
