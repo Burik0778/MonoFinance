@@ -218,7 +218,7 @@ final class PDFStatementTests: XCTestCase {
     }
 
     func debugRows(_ table: ImportTable) -> String {
-        table.rows.prefix(16).map { row in row.prefix(5).map(\.text).joined(separator: " | ") }.joined(separator: "\n")
+        table.rows.prefix(70).map { row in row.prefix(3).map(\.text).joined(separator: " | ") + " | " + row[4].text.prefix(30) }.joined(separator: "\n")
     }
 
     /// Строки первой страницы — для разбора падения в CI.

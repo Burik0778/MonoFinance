@@ -91,10 +91,15 @@ public enum PDFTableLayout {
                     if let index = column(word.minX) { body.append((word, line.y, index)) }
                 }
             }
-            let spineLines = Array(Set(body.filter { $0.column == spine }.map(\.y))).sorted()
+            // PDFKit иногда отдаёт рамку слова высотой в две строки — её середина смещена. Границы записей
+            // считаем только по словам обычной высоты; «высокие» слова потом попадают в ближайшую запись.
+            let height = median(body.map(\.word.height))
+            let spineWords = body.filter { $0.column == spine }.map(\.word)
+            let regular = spineWords.filter { $0.height <= height * 1.25 }
+            let spineLines = Self.lines(regular.isEmpty ? spineWords : regular).map(\.y).sorted()
             guard let firstSpine = spineLines.first else { continue }
             let gaps = zip(spineLines, spineLines.dropFirst()).map { $1 - $0 }
-            let limit = blockGap(gaps, height: median(body.map(\.word.height)))
+            let limit = blockGap(gaps, height: height)
             // Записи — группы строк колонки `spine` без больших промежутков.
             var blocks: [(top: Double, bottom: Double)] = [(firstSpine, firstSpine)]
             for y in spineLines.dropFirst() {
