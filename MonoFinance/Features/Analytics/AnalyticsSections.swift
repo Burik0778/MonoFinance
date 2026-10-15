@@ -428,15 +428,18 @@ struct TrendCard: View {
                 }
             }
             if points.count > 1 {
+                let scale = points.reduce(0.0) { max($0, Self.safe($1.income.chartValue), Self.safe($1.outflow.chartValue)) }
                 Chart {
                     ForEach(points) { point in
-                        BarMark(x: .value("Период", point.date, unit: unit), y: .value("Доход", point.income.chartValue))
+                        let income = Self.safe(point.income.chartValue)
+                        let outflow = Self.safe(point.outflow.chartValue)
+                        BarMark(x: .value("Период", point.date, unit: unit), y: .value("Доход", income))
                             .foregroundStyle(Color.mono.positive.opacity(0.85))
-                            .cornerRadius(3)
+                            .cornerRadius(Self.radius(income, scale: scale))
                             .opacity(selected == nil || selected?.date == point.date ? 1 : 0.35)
-                        BarMark(x: .value("Период", point.date, unit: unit), y: .value("Расход", -point.outflow.chartValue))
+                        BarMark(x: .value("Период", point.date, unit: unit), y: .value("Расход", -outflow))
                             .foregroundStyle(Color.mono.accent)
-                            .cornerRadius(3)
+                            .cornerRadius(Self.radius(outflow, scale: scale))
                             .opacity(selected == nil || selected?.date == point.date ? 1 : 0.35)
                     }
                     RuleMark(y: .value("Ноль", 0))
@@ -468,6 +471,16 @@ struct TrendCard: View {
             }
         }
         .monoSurface(radius: MonoTokens.Radius.xl, padding: 18)
+    }
+
+    /// Нечисловые и отрицательные значения (возвраты больше покупок) — ноль.
+    static func safe(_ value: Double) -> Double { value.isFinite ? max(value, 0) : 0 }
+
+    /// Скругление только у заметных столбиков: Swift Charts падает (NaN в acos), если столбик ниже радиуса
+    /// скругления — так было на «Годе» с месяцем, где сумма — доли процента от шкалы.
+    static func radius(_ value: Double, scale: Double) -> CGFloat {
+        guard scale > 0, value >= scale * 0.06 else { return 0 }
+        return 3
     }
 
     private var axisFormat: Date.FormatStyle {

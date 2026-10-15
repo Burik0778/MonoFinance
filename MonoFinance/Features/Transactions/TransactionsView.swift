@@ -170,7 +170,7 @@ struct TransactionsView: View {
             }
             if days.count > 1 {
                 Chart(days) { point in
-                    BarMark(x: .value("День", point.date, unit: .day), y: .value("Расход", point.outflow.chartValue), width: .ratio(0.6))
+                    BarMark(x: .value("День", point.date, unit: .day), y: .value("Расход", point.outflow.chartValue.isFinite ? max(point.outflow.chartValue, 0) : 0), width: .ratio(0.6))
                         .clipShape(RoundedRectangle(cornerRadius: 1.5, style: .continuous))
                         .foregroundStyle(store.periods.calendar.isDate(point.date, inSameDayAs: today) ? Color.mono.textPrimary : Color.mono.textTertiary)
                 }
