@@ -21,6 +21,8 @@ enum PDFTextExtractor {
         var words: [PDFWord] = []
         var text = ""
         var rect = CGRect.null
+        // PDFKit повторяет последнюю букву каждого текстового фрагмента на том же месте («BANK»» , «000,000»).
+        var previous: (character: String, bounds: CGRect)?
 
         func flush() {
             defer { text = ""; rect = .null }
@@ -40,8 +42,10 @@ enum PDFTextExtractor {
             }
             let bounds = selection.bounds(for: page)
             guard bounds.height > 0, bounds.width >= 0, bounds.minX.isFinite, bounds.minY.isFinite else { continue }
+            if let previous, previous.character == character, Self.overlap(previous.bounds, bounds) > 0.5 { continue }
+            previous = (character, bounds)
             if !rect.isNull {
-                let height = max(rect.height, bounds.height)
+                let height = min(rect.height, bounds.height)
                 let sameLine = abs(rect.midY - bounds.midY) < 0.5 * height
                 let gap = bounds.minX - rect.maxX
                 if !(sameLine && gap < 0.15 * height && gap > -0.5 * height) { flush() }
@@ -51,6 +55,14 @@ enum PDFTextExtractor {
         }
         flush()
         return words
+    }
+
+    /// Доля меньшего прямоугольника, закрытая пересечением.
+    static func overlap(_ a: CGRect, _ b: CGRect) -> Double {
+        let common = a.intersection(b)
+        guard !common.isNull else { return 0 }
+        let smaller = min(a.width * a.height, b.width * b.height)
+        return smaller > 0 ? Double(common.width * common.height / smaller) : (abs(a.minX - b.minX) < 0.5 ? 1 : 0)
     }
 }
 #endif
