@@ -1,0 +1,88 @@
+# Видео-экскурсия по приложению: UI-тест проходит по экранам в iOS-симуляторе, экран записывается в MP4.
+name: Tour video
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [video]
+
+permissions:
+  contents: write
+
+jobs:
+  video:
+    name: Record tour in simulator
+    runs-on: macos-15
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v5
+      - name: Select Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | grep -iv beta | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - name: Boot simulator
+        run: |
+          UDID=$(xcrun simctl list devices available | grep -E 'iPhone 1[6-9] Pro \(' | head -1 | grep -oE '[0-9A-F]{8}-[0-9A-F-]{27}')
+          if [ -z "$UDID" ]; then UDID=$(xcrun simctl list devices available | grep 'iPhone' | head -1 | grep -oE '[0-9A-F]{8}-[0-9A-F-]{27}'); fi
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl ui "$UDID" appearance dark || true
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true
+      - name: Build for testing
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing \
+            -project MonoFinance.xcodeproj \
+            -scheme MonoFinanceTour \
+            -destination "id=$UDID" \
+            -derivedDataPath build-ui \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee ui-build.log | grep -E 'error:|TEST BUILD SUCCEEDED|BUILD FAILED' | head -100
+      - name: Install ffmpeg
+        run: which ffmpeg || brew install ffmpeg
+      - name: Record tour
+        run: |
+          xcrun simctl io "$UDID" recordVideo --codec=h264 --force "$RUNNER_TEMP/tour.mov" &
+          REC=$!
+          sleep 3
+          xcodebuild test-without-building \
+            -project MonoFinance.xcodeproj \
+            -scheme MonoFinanceTour \
+            -destination "id=$UDID" \
+            -derivedDataPath build-ui \
+            -only-testing:MonoFinanceUITests/TourUITests/testTour \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee ui-test.log | grep -E 'error|Test Case|passed|failed' | head -60 || true
+          sleep 2
+          kill -INT $REC || true
+          sleep 5
+          ls -lh "$RUNNER_TEMP/tour.mov"
+      - name: Compress video
+        run: |
+          ffmpeg -y -loglevel error -i "$RUNNER_TEMP/tour.mov" \
+            -vf "scale=720:-2,fps=30" -c:v libx264 -preset veryfast -crf 26 -pix_fmt yuv420p -movflags +faststart -an \
+            MONO-tour.mp4
+          ls -lh MONO-tour.mp4
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MONO-tour
+          path: MONO-tour.mp4
+      - name: Publish to ci-video branch
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p /tmp/vid
+          cp MONO-tour.mp4 /tmp/vid/ 2>/dev/null || true
+          grep -E 'error|Test Case|passed|failed' ui-test.log > /tmp/vid/ui-test.txt 2>/dev/null || true
+          grep -E ' error: ' ui-build.log | sed "s|$GITHUB_WORKSPACE/||g" | sort -u > /tmp/vid/ui-build-errors.txt 2>/dev/null || true
+          echo "${GITHUB_SHA}" > /tmp/vid/commit.txt
+          cd /tmp/vid
+          git init -q -b ci-video
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -qm "Tour video ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-video

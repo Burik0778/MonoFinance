@@ -35,6 +35,7 @@
 		74E5C337CB8A43F9FD225076 /* VoiceInputModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7DB125CB05DBB98D9B903B3 /* VoiceInputModel.swift */; };
 		7549482599D55FB444FE806B /* VoiceDraftCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62EDDEB69FE4FD82BD992686 /* VoiceDraftCard.swift */; };
 		7AC9E1BC43E5A9BB771CC75F /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82791256376097F964472914 /* Typography.swift */; };
+		7B9BE1F1F34DF05760E3D570 /* TourUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 359C82848325D8675AB63F40 /* TourUITests.swift */; };
 		7DAC27C29C97238A49A0AE7D /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2CC0D861D14692F9325B9F3 /* KeychainStore.swift */; };
 		7E6EAD9095339F7C73199B93 /* Services.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AD21495EA7027968A88D514 /* Services.swift */; };
 		811127040F36FC46FC852B11 /* TransactionFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E788B9634F57CC6BD724CDA /* TransactionFilter.swift */; };
@@ -75,6 +76,16 @@
 		F7EEBE463C2894B54BBB11A1 /* InsightQuoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF92C8B0A61C31A62DF41591 /* InsightQuoteView.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		D40E09253DFB5364537DA895 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E2B2FA158D4C7466DC7138D1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6DB96CA3D47EE1F3219FC30D;
+			remoteInfo = MonoFinance;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		057151046E4D8F8BFAA395F0 /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
 		09D49B73878E77FDD74A9B9E /* FinanceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinanceStore.swift; sourceTree = "<group>"; };
@@ -86,6 +97,7 @@
 		2DB0B333834994148DB4B1C4 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		2E0C8C165D0D80CE4ABA13F7 /* AccountEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountEditorView.swift; sourceTree = "<group>"; };
 		31BFB3EFAF5433DEC4437C86 /* Environment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Environment.swift; sourceTree = "<group>"; };
+		359C82848325D8675AB63F40 /* TourUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TourUITests.swift; sourceTree = "<group>"; };
 		38C908F50BDCF86DDB598BED /* MoneyText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoneyText.swift; sourceTree = "<group>"; };
 		4337ECE234F9CCFD561F81AF /* Toast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toast.swift; sourceTree = "<group>"; };
 		567154991313D5353F5F57E5 /* MonoFinanceApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonoFinanceApp.swift; sourceTree = "<group>"; };
@@ -125,6 +137,7 @@
 		C1E021795ACBDCC56B8992A0 /* Motion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Motion.swift; sourceTree = "<group>"; };
 		C293437DE8FD0BB87D20E16E /* ExchangeRatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExchangeRatesView.swift; sourceTree = "<group>"; };
 		C974E98E5EC874C169275CA6 /* AssistantView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantView.swift; sourceTree = "<group>"; };
+		CB60D359E20AA1F86D8AAFEB /* MonoFinanceUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MonoFinanceUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF92C8B0A61C31A62DF41591 /* InsightQuoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightQuoteView.swift; sourceTree = "<group>"; };
 		D50BAA4AB68C479DE7BF92DE /* OverviewSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewSections.swift; sourceTree = "<group>"; };
 		D6BAE10B2F8E2C7426765C64 /* TransactionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionRow.swift; sourceTree = "<group>"; };
@@ -188,6 +201,7 @@
 			isa = PBXGroup;
 			children = (
 				ED5365415DCD4FBF9170396D /* MonoFinance.app */,
+				CB60D359E20AA1F86D8AAFEB /* MonoFinanceUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -284,6 +298,14 @@
 			path = Budgets;
 			sourceTree = "<group>";
 		};
+		80ED9E7CEF02D204A3FF4982 /* MonoFinanceUITests */ = {
+			isa = PBXGroup;
+			children = (
+				359C82848325D8675AB63F40 /* TourUITests.swift */,
+			);
+			path = MonoFinanceUITests;
+			sourceTree = "<group>";
+		};
 		84CAE192847A49731D0C2695 /* Security */ = {
 			isa = PBXGroup;
 			children = (
@@ -298,6 +320,7 @@
 			isa = PBXGroup;
 			children = (
 				E917E651572CA8C9ED072915 /* MonoFinance */,
+				80ED9E7CEF02D204A3FF4982 /* MonoFinanceUITests */,
 				57E8CD32ACC30F26730D3F88 /* Packages */,
 				211229DDC68094EE0E036879 /* Products */,
 			);
@@ -401,6 +424,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		41C8E4BFD9891063AAFCD2F8 /* MonoFinanceUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 584ACEB9F44B33F2BEE16C02 /* Build configuration list for PBXNativeTarget "MonoFinanceUITests" */;
+			buildPhases = (
+				535B0DED252ABF9CB5764BFE /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				670303ABA61E32A23279F2F3 /* PBXTargetDependency */,
+			);
+			name = MonoFinanceUITests;
+			packageProductDependencies = (
+			);
+			productName = MonoFinanceUITests;
+			productReference = CB60D359E20AA1F86D8AAFEB /* MonoFinanceUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		6DB96CA3D47EE1F3219FC30D /* MonoFinance */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 92DEA6B4404B3FD0225915C5 /* Build configuration list for PBXNativeTarget "MonoFinance" */;
@@ -430,6 +471,11 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
+					41C8E4BFD9891063AAFCD2F8 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+						TestTargetID = 6DB96CA3D47EE1F3219FC30D;
+					};
 					6DB96CA3D47EE1F3219FC30D = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
@@ -454,6 +500,7 @@
 			projectRoot = "";
 			targets = (
 				6DB96CA3D47EE1F3219FC30D /* MonoFinance */,
+				41C8E4BFD9891063AAFCD2F8 /* MonoFinanceUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -472,6 +519,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		535B0DED252ABF9CB5764BFE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7B9BE1F1F34DF05760E3D570 /* TourUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F9CB448FADF68527FA7B7BB9 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -543,6 +598,14 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		670303ABA61E32A23279F2F3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6DB96CA3D47EE1F3219FC30D /* MonoFinance */;
+			targetProxy = D40E09253DFB5364537DA895 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
 		260EB5B91E409EF2C02CA132 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -604,6 +667,24 @@
 			};
 			name = Release;
 		};
+		28B040E60FBEF23AB646E6DF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = uz.mono.finance.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = MonoFinance;
+			};
+			name = Debug;
+		};
 		84502CFD99848B8A6193A5CE /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -630,6 +711,24 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = minimal;
 				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		89A840D87351B749C58D9078 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = uz.mono.finance.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = MonoFinance;
 			};
 			name = Release;
 		};
@@ -737,6 +836,15 @@
 			buildConfigurations = (
 				A675D316F35D6CF44FBB377D /* Debug */,
 				260EB5B91E409EF2C02CA132 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		584ACEB9F44B33F2BEE16C02 /* Build configuration list for PBXNativeTarget "MonoFinanceUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				28B040E60FBEF23AB646E6DF /* Debug */,
+				89A840D87351B749C58D9078 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

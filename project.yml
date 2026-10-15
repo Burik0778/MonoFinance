@@ -46,7 +46,31 @@ targets:
         SWIFT_STRICT_CONCURRENCY: minimal
         ENABLE_USER_SCRIPT_SANDBOXING: YES
         DEAD_CODE_STRIPPING: YES
+  MonoFinanceUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: MonoFinanceUITests
+    dependencies:
+      - target: MonoFinance
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: uz.mono.finance.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: MonoFinance
+        CODE_SIGNING_ALLOWED: NO
 schemes:
+  MonoFinanceTour:
+    build:
+      targets:
+        MonoFinance: all
+        MonoFinanceUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - MonoFinanceUITests
   MonoFinance:
     build:
       targets:
