@@ -1,0 +1,87 @@
+# Запуск приложения в браузере без установки: сборка для iOS-симулятора и загрузка в Appetize.
+# Нужен секрет репозитория APPETIZE_API_TOKEN (бесплатный аккаунт appetize.io). Запуск вручную: Actions → Browser preview → Run workflow.
+name: Browser preview (Appetize)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  appetize:
+    name: Build and upload to Appetize
+    runs-on: macos-15
+    timeout-minutes: 40
+    env:
+      APPETIZE_API_TOKEN: ${{ secrets.APPETIZE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check token
+        run: |
+          if [ -z "$APPETIZE_API_TOKEN" ]; then
+            echo "::error::Добавьте секрет APPETIZE_API_TOKEN: Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+      - name: Select Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | grep -iv beta | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - name: Build for simulator (arm64 + x86_64)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project MonoFinance.xcodeproj \
+            -scheme MonoFinance \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build-sim \
+            ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee sim.log | grep -E 'error:|BUILD SUCCEEDED|BUILD FAILED' | head -100
+      - name: Upload to Appetize
+        run: |
+          cd build-sim/Build/Products/Release-iphonesimulator
+          zip -qry "$RUNNER_TEMP/MonoFinance-sim.zip" MonoFinance.app
+          ls -lh "$RUNNER_TEMP/MonoFinance-sim.zip"
+          PREV=""
+          if git -C "$GITHUB_WORKSPACE" fetch -q origin appetize-key 2>/dev/null; then
+            PREV=$(git -C "$GITHUB_WORKSPACE" show FETCH_HEAD:key.txt 2>/dev/null | tr -d '[:space:]')
+          fi
+          URL="https://api.appetize.io/v1/apps${PREV:+/$PREV}"
+          echo "Upload to: $URL"
+          CODE=$(curl -sS -o "$RUNNER_TEMP/resp.json" -w "%{http_code}" -X POST "$URL" \
+            -H "X-API-KEY: $APPETIZE_API_TOKEN" \
+            -F "file=@$RUNNER_TEMP/MonoFinance-sim.zip" \
+            -F "platform=ios")
+          echo "HTTP $CODE"
+          python3 - "$RUNNER_TEMP/resp.json" <<'PY'
+          import json, sys
+          data = json.load(open(sys.argv[1]))
+          safe = {k: v for k, v in data.items() if k.lower() not in ("token", "apikey", "api_key")}
+          print(json.dumps(safe, ensure_ascii=False, indent=1))
+          key = data.get("publicKey", "")
+          url = data.get("appURL") or (f"https://appetize.io/app/{key}" if key else "")
+          open("/tmp/appetize_key.txt", "w").write(key)
+          open("/tmp/appetize_url.txt", "w").write(url)
+          open("/tmp/appetize_resp.json", "w").write(json.dumps(safe, ensure_ascii=False, indent=1))
+          PY
+          test -s /tmp/appetize_key.txt
+          echo "Ссылка: $(cat /tmp/appetize_url.txt)"
+      - name: Publish link to appetize-key branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p /tmp/akey && cd /tmp/akey
+          cp /tmp/appetize_key.txt key.txt
+          cp /tmp/appetize_url.txt url.txt
+          cp /tmp/appetize_resp.json response.json
+          echo "${GITHUB_SHA}" > commit.txt
+          git init -q -b appetize-key
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -qm "Appetize ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" appetize-key
